@@ -19,11 +19,12 @@ in
 
       taps = [
         "anomalyco/tap"
+        "akitaonrails/tap"
         "cirruslabs/cli"
       ];
 
       brews = [
-        "ai-jail"
+        "akitaonrails/tap/ai-jail"
         "cliproxyapi"
         "duti"
         "herdr"
