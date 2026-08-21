@@ -17,6 +17,12 @@ if [[ -x "$HOME/.local/bin/opencode" ]]; then
   ln -sfn "$HOME/.local/bin/opencode" "$HOME/.local/bin/opencode1"
 fi
 
+# The v2 prerelease currently publishes its executable as `lildax`; retain the
+# stable name used by aliases and T3 Code as upstream prereleases evolve.
+if [[ -x "$HOME/.local/bin/lildax" ]]; then
+  ln -sfn "$HOME/.local/bin/lildax" "$HOME/.local/bin/opencode2"
+fi
+
 command -v claude >/dev/null 2>&1 && claude update || true
 command -v hermes >/dev/null 2>&1 && hermes update --yes || true
 "$HOME/.local/bin/ai-skills-update" || true

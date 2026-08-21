@@ -35,8 +35,15 @@ done
 
 check test -d "$HOME/Applications/T3 Code (Nightly).app"
 check defaults read com.raycast.macos raycastGlobalHotkey
-check launchctl print "gui/$(id -u)/sh.executor.daemon"
-check launchctl print "gui/$(id -u)/com.joel.ai-memory-watchdog"
+check test -f "$HOME/Library/LaunchAgents/sh.executor.daemon.plist"
+check test -f "$HOME/Library/LaunchAgents/com.joel.ai-memory-watchdog.plist"
+
+# A headless Tart SSH session has no GUI bootstrap domain. When one exists,
+# additionally prove that launchd loaded both agents.
+if launchctl print "gui/$(id -u)" >/dev/null 2>&1; then
+  check launchctl print "gui/$(id -u)/sh.executor.daemon"
+  check launchctl print "gui/$(id -u)/com.joel.ai-memory-watchdog"
+fi
 
 ((failures == 0)) || { echo "$failures smoke checks failed" >&2; exit 1; }
 echo "all smoke checks passed"

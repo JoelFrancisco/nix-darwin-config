@@ -71,6 +71,6 @@ nix flake check --print-build-logs
 ./tests/vm-test.sh
 ```
 
-The VM test uses a disposable Tart macOS guest, switches the configuration twice, reboots, and runs `tests/smoke-test.sh`. macOS guests cannot exercise nested virtualization engines, so the test verifies that OrbStack, Tart, and UTM install and launch; their actual container/VM engines must be smoke-tested on physical hardware.
+The VM test uses a disposable Tart macOS guest, switches the configuration twice, reboots, and runs `tests/smoke-test.sh`. A headless SSH-only user has no GUI launchd domain, so that test validates generated LaunchAgent plists; when a GUI domain exists it also verifies the agents are loaded. macOS guests cannot exercise nested virtualization engines, so the test verifies that OrbStack, Tart, and UTM install; their actual container/VM engines must be smoke-tested on physical hardware.
 
 Rollback remains available through `darwin-rebuild --list-generations` and `darwin-rebuild switch --rollback`.
