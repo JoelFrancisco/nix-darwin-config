@@ -26,7 +26,7 @@
     };
 
     # Free Command-Space from Spotlight. Raycast's private preference is applied
-    # idempotently by `configure-raycast`; its UI still verifies the hotkey.
+    # idempotently by `configure-desktop`; its UI still verifies the hotkey.
     system.activationScripts.postActivation.text = ''
       mkdir -p /Users/${user}/Pictures/Screenshots
       chown ${user}:staff /Users/${user}/Pictures/Screenshots

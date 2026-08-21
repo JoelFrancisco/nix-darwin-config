@@ -85,7 +85,7 @@
             --preview 'sesh preview {}'
         )\""
         bind-key W run-shell 'sesh window "$(sesh window | fzf-tmux -p 60%,50% --prompt "🪟  ")"'
-        bind-key M command-prompt -p "new project (under ~/Work):" "run-shell 'mkp ~/Work/%1 >/dev/null && sesh connect ~/Work/%1'"
+        bind-key M command-prompt -p "new project (under ~/Work):" "run-shell 'mkdir -p ~/Work/%1 && zoxide add ~/Work/%1 && sesh connect ~/Work/%1'"
 
         set -ag terminal-overrides ",*:RGB"
         set -g renumber-windows on
