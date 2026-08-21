@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+export PATH="$HOME/.orbstack/bin:/opt/homebrew/bin:/usr/bin:/bin:$PATH"
+image="${AI_MEMORY_IMAGE:-akitaonrails/ai-memory:latest}"
+if [[ "${1:-}" == "upgrade" ]]; then
+  docker --context orbstack pull "$image"
+  "$HOME/.local/bin/ai-memory-ensure"
+  exit 0
+fi
+
+tty=()
+[[ -t 0 && -t 1 ]] && tty=(-it)
+exec docker --context orbstack run --rm "${tty[@]}" \
+  -v "$HOME:$HOME" -v "$PWD:/work" -w /work \
+  -v ai-memory-data:/data \
+  -e HOME="$HOME" \
+  -e AI_MEMORY_SERVER_URL="${AI_MEMORY_SERVER_URL:-http://host.docker.internal:49374}" \
+  "$image" "$@"
+

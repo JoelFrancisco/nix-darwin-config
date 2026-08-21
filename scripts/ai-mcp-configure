@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+export PATH="/opt/homebrew/bin:$HOME/.local/bin:/usr/bin:/bin:$PATH"
+if command -v claude >/dev/null 2>&1; then
+  claude mcp get executor >/dev/null 2>&1 || \
+    claude mcp add --scope user executor -- executor mcp
+  claude mcp get ai-memory >/dev/null 2>&1 || \
+    claude mcp add --scope user --transport http ai-memory http://127.0.0.1:49374/mcp
+fi
+

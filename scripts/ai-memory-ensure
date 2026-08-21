@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+export PATH="$HOME/.orbstack/bin:/opt/homebrew/bin:/usr/bin:/bin:$PATH"
+d() { docker --context orbstack "$@"; }
+[[ ! -f "$HOME/.config/ai-memory/watchdog.disabled" ]] || exit 0
+d info >/dev/null 2>&1 || exit 0
+
+state="$(d inspect -f '{{.State.Status}}' ai-memory 2>/dev/null || true)"
+case "$state" in
+  running) exit 0 ;;
+  "")
+    # The child shell expands OPENROUTER_API_KEY after SecretSpec injects it.
+    # shellcheck disable=SC2016
+    secretspec run --file "$HOME/.config/nix-darwin/secretspec.toml" --profile personal -- \
+      bash -c 'docker --context orbstack run -d --name ai-memory \
+        --restart unless-stopped \
+        -p 127.0.0.1:49374:49374 \
+        -v ai-memory-data:/data \
+        -e AI_MEMORY_LLM_PROVIDER=openai-compat \
+        -e AI_MEMORY_LLM_BASE_URL=https://openrouter.ai/api/v1 \
+        -e AI_MEMORY_LLM_MODEL=openai/gpt-5-mini \
+        -e LLM_API_KEY="$OPENROUTER_API_KEY" \
+        -e AI_MEMORY_ALLOWED_HOSTS="localhost,127.0.0.1,::1,host.docker.internal" \
+        akitaonrails/ai-memory:latest'
+    ;;
+  *) d start ai-memory >/dev/null ;;
+esac

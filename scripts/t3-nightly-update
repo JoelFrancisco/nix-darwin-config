@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+export PATH="/opt/homebrew/bin:/usr/bin:/bin:$PATH"
+api="https://api.github.com/repos/pingdotgg/t3code/releases?per_page=20"
+url="$(curl -fsSL "$api" | jq -r '[.[] | select(.prerelease == true) | .assets[] | select(.name | test("arm64\\.zip$")) | select(.name | endswith(".blockmap") | not)][0].browser_download_url // empty')"
+[[ -n "$url" ]] || { echo "t3-nightly-update: no arm64 nightly asset found" >&2; exit 1; }
+
+tmp="$(mktemp -d)"
+trap 'rm -rf "$tmp"' EXIT
+curl -fsSL "$url" -o "$tmp/t3.zip"
+ditto -x -k "$tmp/t3.zip" "$tmp/unpacked"
+app="$(find "$tmp/unpacked" -maxdepth 2 -type d -name '*.app' -print -quit)"
+[[ -n "$app" ]] || { echo "t3-nightly-update: archive contains no app" >&2; exit 1; }
+
+mkdir -p "$HOME/Applications"
+target="$HOME/Applications/T3 Code (Nightly).app"
+backup="$target.before-update"
+[[ ! -e "$backup" ]] || rm -rf "$backup"
+[[ ! -e "$target" ]] || mv "$target" "$backup"
+if ditto "$app" "$target"; then
+  [[ ! -e "$backup" ]] || rm -rf "$backup"
+else
+  [[ ! -e "$backup" ]] || mv "$backup" "$target"
+  exit 1
+fi
+

@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+export PATH="/opt/homebrew/bin:$HOME/.local/bin:$HOME/.local/share/npm/bin:/usr/bin:/bin:$PATH"
+mkdir -p "$HOME/.local" "$HOME/.local/state/ai-tools"
+
+npm install --global --prefix "$HOME/.local" \
+  opencode-ai@latest \
+  @opencode-ai/cli@next \
+  executor@latest
+
+if [[ -x "$HOME/.local/bin/opencode" ]]; then
+  ln -sfn "$HOME/.local/bin/opencode" "$HOME/.local/bin/opencode1"
+fi
+
+command -v claude >/dev/null 2>&1 && claude update || true
+command -v hermes >/dev/null 2>&1 && hermes update --yes || true
+"$HOME/.local/bin/ai-skills-update" || true
+"$HOME/.local/bin/t3-nightly-update" || true
+

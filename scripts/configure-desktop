@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Command-Space (key code 49) is Raycast's global hotkey on this machine.
+defaults write com.raycast.macos raycastGlobalHotkey -string "Command-49"
+defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 64 \
+  '<dict><key>enabled</key><false/></dict>'
+
+# LaunchServices has no universal "default terminal" slot. These cover the
+# relevant document types and make Ghostty the terminal opened by scripts.
+if command -v duti >/dev/null 2>&1; then
+  duti -s com.mitchellh.ghostty public.unix-executable all || true
+  duti -s com.mitchellh.ghostty public.shell-script all || true
+  duti -s com.mitchellh.ghostty com.apple.terminal.shell-script all || true
+fi
+

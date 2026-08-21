@@ -1,0 +1,9 @@
+.DS_Store
+.direnv/
+result
+result-*
+*.log
+*.bak
+.secrets/
+.env
+

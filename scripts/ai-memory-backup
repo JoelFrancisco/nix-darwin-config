@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+export PATH="$HOME/.orbstack/bin:/opt/homebrew/bin:/usr/bin:/bin:$PATH"
+backup_dir="$HOME/Backups/ai-memory"
+mkdir -p "$backup_dir"
+stamp="$(date +%Y%m%d-%H%M%S)"
+docker --context orbstack run --rm \
+  -v ai-memory-data:/data:ro -v "$backup_dir:/backup" alpine:latest \
+  tar -czf "/backup/ai-memory-${stamp}.tar.gz" -C /data .
+find "$backup_dir" -type f -name 'ai-memory-*.tar.gz' -mtime +30 -delete
+

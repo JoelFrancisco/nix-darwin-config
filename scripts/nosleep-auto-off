@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+set -euo pipefail
+export PATH="/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
+
+sessions="$HOME/.claude/sessions"
+mkdir -p "${XDG_STATE_HOME:-$HOME/.local/state}/nosleep"
+
+if [[ -d "$sessions" ]]; then
+  for file in "$sessions"/*.json; do
+    [[ -e "$file" ]] || continue
+    pid="$(basename "$file" .json)"
+    [[ "$pid" =~ ^[0-9]+$ ]] || continue
+    kill -0 "$pid" 2>/dev/null || continue
+    [[ "$(jq -r '.status // empty' "$file" 2>/dev/null || true)" != busy ]] || exit 0
+  done
+fi
+
+[[ "$(pmset -g | awk '$1 == "SleepDisabled" { print $2 }')" != 1 ]] || \
+  "$HOME/.local/bin/nosleep" off
+

@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+export PATH="/opt/homebrew/bin:$HOME/.local/bin:/usr/bin:/bin:$PATH"
+# These are the only allowed skill sources. No private Betha repositories are
+# copied or queried by this configuration.
+npx --yes skills add mattpocock/skills --all --global --yes
+npx --yes skills add JoelFrancisco/skills --all --global --yes
+

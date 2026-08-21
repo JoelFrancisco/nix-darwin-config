@@ -1,0 +1,27 @@
+name: update flake
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 9 * * *"
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@v19
+      - run: nix flake update
+      - run: nix flake check --print-build-logs
+      - uses: peter-evans/create-pull-request@v7
+        with:
+          branch: automation/update-flake-lock
+          delete-branch: true
+          commit-message: "chore: update flake inputs"
+          title: "chore: update flake inputs"
+          body: "Automated daily unstable-input refresh. The full flake check passed."
+

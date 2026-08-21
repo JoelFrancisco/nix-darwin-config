@@ -1,0 +1,19 @@
+# Loopback-only gateway for claudex and jclaudex. Provider OAuth state remains
+# mutable under auth-dir and is deliberately not managed by Nix.
+host: "127.0.0.1"
+port: 8317
+tls:
+  enable: false
+  cert: ""
+  key: ""
+remote-management:
+  allow-remote: false
+  secret-key: ""
+  disable-control-panel: true
+auth-dir: "/Users/joel.filho/.config/cli-proxy-api/auth"
+api-keys:
+  - "CLAUDEX_PROXY_TOKEN_REQUIRED"
+debug: false
+logging-to-file: true
+logs-max-total-size-mb: 100
+

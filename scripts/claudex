@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+proxy_url="${CLAUDEX_PROXY_URL:-http://127.0.0.1:8317}"
+proxy_token="${CLAUDEX_PROXY_TOKEN:-CLAUDEX_PROXY_TOKEN_REQUIRED}"
+model="${CLAUDEX_MODEL:-gpt-5.6-sol}"
+max_context_tokens="${CLAUDEX_CONTEXT_WINDOW:-372000}"
+auto_compact_window="${CLAUDEX_AUTO_COMPACT_WINDOW:-330000}"
+
+if ! curl -fsS --max-time 1 -H "Authorization: Bearer ${proxy_token}" \
+  "${proxy_url}/v1/models" >/dev/null 2>&1; then
+  mkdir -p "${HOME}/.local/state/cli-proxy-api"
+  nohup cliproxyapi -config "${HOME}/.config/cli-proxy-api/config.yaml" \
+    >>"${HOME}/.local/state/cli-proxy-api/daemon.log" 2>&1 &
+  disown || true
+  for _ in {1..20}; do
+    curl -fsS --max-time 1 -H "Authorization: Bearer ${proxy_token}" \
+      "${proxy_url}/v1/models" >/dev/null 2>&1 && break
+    sleep 0.1
+  done
+fi
+
+export ANTHROPIC_BASE_URL="${proxy_url}"
+export ANTHROPIC_AUTH_TOKEN="${proxy_token}"
+unset ANTHROPIC_API_KEY || true
+export ANTHROPIC_MODEL="${model}"
+export ANTHROPIC_CUSTOM_MODEL_OPTION="${model}"
+export ANTHROPIC_CUSTOM_MODEL_OPTION_NAME="GPT 5.6 via CLIProxyAPI"
+export ANTHROPIC_DEFAULT_OPUS_MODEL="${model}"
+export ANTHROPIC_DEFAULT_SONNET_MODEL="${model}"
+export ANTHROPIC_DEFAULT_HAIKU_MODEL="${model}"
+export CLAUDE_CODE_SUBAGENT_MODEL="${model}"
+export CLAUDE_CODE_MAX_CONTEXT_TOKENS="${max_context_tokens}"
+export CLAUDE_CODE_AUTO_COMPACT_WINDOW="${auto_compact_window}"
+
+exec claude --model "${model}" "$@"

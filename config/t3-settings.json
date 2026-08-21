@@ -1,0 +1,18 @@
+{
+  "providerInstances": {
+    "claudeAgent_claudex": {
+      "driver": "claudeAgent",
+      "displayName": "Claudex",
+      "accentColor": "#7c3aed",
+      "enabled": true,
+      "config": { "binaryPath": "claudex" }
+    },
+    "opencode2": {
+      "driver": "opencode",
+      "displayName": "OpenCode 2",
+      "enabled": true,
+      "config": { "binaryPath": "/Users/joel.filho/.local/bin/opencode2" }
+    }
+  }
+}
+

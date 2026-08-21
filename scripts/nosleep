@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+state_dir="${XDG_STATE_HOME:-$HOME/.local/state}/nosleep"
+backup="$state_dir/pmset-backup.env"
+keys=(sleep displaysleep disksleep standby autopoweroff hibernatemode)
+fallback_b=(sleep 1 displaysleep 2 disksleep 10 standby 1 hibernatemode 3)
+fallback_c=(sleep 0 displaysleep 10 disksleep 10 standby 1 hibernatemode 3)
+
+get_val() {
+  pmset -g custom | awk -v src="$1" -v key="$2" '
+    /^Battery Power:/ { cur = "Battery" }
+    /^AC Power:/      { cur = "AC" }
+    cur == src && $1 == key { print $2; exit }
+  '
+}
+
+is_on() { [[ "$(pmset -g | awk '$1 == "SleepDisabled" { print $2 }')" == "1" ]]; }
+
+case "${1:-status}" in
+  on)
+    if [[ ! -f "$backup" ]]; then
+      mkdir -p "$state_dir"
+      for key in "${keys[@]}"; do
+        echo "b_$key=$(get_val Battery "$key")"
+        echo "c_$key=$(get_val AC "$key")"
+      done >"$backup"
+    fi
+    args_b=() args_c=()
+    for key in "${keys[@]}"; do
+      [[ -z "$(get_val Battery "$key")" ]] || args_b+=("$key" 0)
+      [[ -z "$(get_val AC "$key")" ]] || args_c+=("$key" 0)
+    done
+    ((${#args_b[@]} == 0)) || sudo pmset -b "${args_b[@]}"
+    ((${#args_c[@]} == 0)) || sudo pmset -c "${args_c[@]}"
+    sudo pmset -a disablesleep 1
+    echo "nosleep: ON — sleep and lid sleep disabled"
+    ;;
+  off)
+    sudo pmset -a disablesleep 0
+    if [[ -f "$backup" ]]; then
+      # shellcheck disable=SC1090
+      source "$backup"
+      args_b=() args_c=()
+      for key in "${keys[@]}"; do
+        b="b_$key" c="c_$key"
+        [[ -z "${!b:-}" ]] || args_b+=("$key" "${!b}")
+        [[ -z "${!c:-}" ]] || args_c+=("$key" "${!c}")
+      done
+      ((${#args_b[@]} == 0)) || sudo pmset -b "${args_b[@]}"
+      ((${#args_c[@]} == 0)) || sudo pmset -c "${args_c[@]}"
+      rm -f "$backup"
+    else
+      sudo pmset -b "${fallback_b[@]}"
+      sudo pmset -c "${fallback_c[@]}"
+    fi
+    echo "nosleep: OFF — sleep settings restored"
+    ;;
+  status)
+    is_on && echo "nosleep: ON" || echo "nosleep: OFF"
+    [[ ! -f "$backup" ]] || echo "backup: $backup"
+    pmset -g custom | awk '/Power:/ { print; next } $1 ~ /^(sleep|displaysleep|disksleep|standby|autopoweroff|hibernatemode)$/ { printf "  %-14s %s\n", $1, $2 }'
+    ;;
+  *) echo "usage: nosleep [on|off|status]" >&2; exit 2 ;;
+esac
+
