@@ -22,9 +22,52 @@
       enable = true;
       nix-direnv.enable = true;
     };
-    programs.starship.enable = true;
+    programs.starship = {
+      enable = true;
+      settings = {
+        add_newline = true;
+        command_timeout = 2000;
+        character = {
+          success_symbol = "[❯](bold green)";
+          error_symbol = "[❯](bold red)";
+        };
+        directory = {
+          style = "bold cyan";
+          read_only = " 󰌾";
+          truncation_length = 3;
+          truncate_to_repo = false;
+        };
+        git_branch = {
+          symbol = " ";
+          style = "bold purple";
+        };
+        git_status.style = "bold red";
+        nodejs.symbol = "󰎙 ";
+        python.symbol = " ";
+        java.symbol = " ";
+        golang.symbol = " ";
+        rust.symbol = " ";
+        docker_context.symbol = " ";
+        kubernetes.symbol = "󱃾 ";
+        package.symbol = "󰏗 ";
+        cmd_duration = {
+          min_time = 500;
+          format = "took [$duration](bold yellow) ";
+        };
+        gcloud.disabled = true;
+      };
+    };
+    programs.atuin = {
+      enable = true;
+      enableZshIntegration = true;
+      settings.enter_accept = true;
+    };
     programs.zoxide.enable = true;
-    programs.fzf.enable = true;
+    programs.fzf = {
+      enable = true;
+      # Atuin owns Ctrl-R; keep fzf available without shadowing history search.
+      historyWidget.command = "";
+    };
 
     programs.git = {
       enable = true;
@@ -68,16 +111,17 @@
         jcodex-run()    { ai-jail "''${_aijail_opts[@]}" codex exec --dangerously-bypass-approvals-and-sandbox "$@"; }
         jopencode-run() { ai-jail "''${_aijail_opts[@]}" opencode run --dangerously-skip-permissions "$@"; }
         jclaudex()      { ai-jail "''${_aijail_opts[@]}" claudex "$@"; }
+
+        mkp() {
+          mkdir -p "$1" && zoxide add "$1" && cd "$1"
+        }
       '';
     };
 
     home.packages = with pkgs; [
-      atuin
       lazygit
-      mise
       sesh
       tmux
-      uv
       yazi
     ];
   };

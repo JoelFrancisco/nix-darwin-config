@@ -1,7 +1,12 @@
 { ... }:
 {
   flake.homeModules.ai =
-    { lib, user, ... }:
+    {
+      lib,
+      pkgs,
+      user,
+      ...
+    }:
     let
       executable = source: {
         inherit source;
@@ -18,21 +23,42 @@
         ".local/bin/ai-memory" = executable ../scripts/ai-memory;
         ".local/bin/ai-memory-ensure" = executable ../scripts/ai-memory-ensure;
         ".local/bin/ai-memory-backup" = executable ../scripts/ai-memory-backup;
-        ".local/bin/nosleep" = executable ../scripts/nosleep;
-        ".local/bin/nosleep-auto-off" = executable ../scripts/nosleep-auto-off;
-        ".local/bin/configure-desktop" = executable ../scripts/configure-desktop;
-
         ".agents/AGENTS.md".source = ../config/AGENTS.md;
         ".codex/AGENTS.md".source = ../config/AGENTS.md;
         ".codex/config.toml".source = ../config/codex.toml;
         ".claude/CLAUDE.md".source = ../config/CLAUDE.md;
         ".claude/settings.json".text = builtins.toJSON {
           env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS = "1";
-          permissions.defaultMode = "default";
+          model = "claude-fable-5[1m]";
+          effortLevel = "high";
+          autoUpdatesChannel = "latest";
+          editorMode = "vim";
+          remoteControlAtStartup = true;
+          skipAutoPermissionPrompt = true;
+          skipDangerousModePermissionPrompt = true;
+          skipWorkflowUsageWarning = true;
+          teammateMode = "in-process";
+          theme = "dark";
+          voiceEnabled = true;
+          permissions = {
+            defaultMode = "auto";
+            allow = [
+              "Bash(codex exec:*)"
+              "Bash(codex review:*)"
+            ];
+          };
         };
         ".hermes/config.yaml".source = ../config/hermes.yaml;
         ".t3/userdata/settings.json".source = ../config/t3-settings.json;
+        ".ai-jail".text = ''
+          no_status_bar = true
+          no_save_config = true
+          private_home = false
+        '';
       };
+
+      # Node is a runtime for global AI clients/updaters, not a project toolchain.
+      home.packages = [ pkgs.nodejs_24 ];
 
       xdg.configFile = {
         "nix-darwin/secretspec.toml".source = ../config/secretspec.toml;
@@ -40,9 +66,17 @@
         "opencode/opencode.json".source = ../config/opencode.json;
       };
 
-      home.activation.bootstrapAiTools = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+      home.activation.prepareAiState = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+        run mkdir -p \
+          "$HOME/.executor/logs" \
+          "$HOME/.config/ai-memory" \
+          "$HOME/.config/cli-proxy-api/auth" \
+          "$HOME/.local/state/ai-tools" \
+          "$HOME/.local/state/cli-proxy-api"
+      '';
+
+      home.activation.bootstrapAiTools = lib.hm.dag.entryAfter [ "prepareAiState" ] ''
         if [[ -z "''${DRY_RUN:-}" ]]; then
-          "$HOME/.local/bin/configure-desktop" || true
           "$HOME/.local/bin/ai-tools-update" >"$HOME/.local/state/ai-tools/bootstrap.log" 2>&1 || true
           "$HOME/.local/bin/ai-mcp-configure" >>"$HOME/.local/state/ai-tools/bootstrap.log" 2>&1 || true
         fi
@@ -85,6 +119,10 @@
           config = {
             Label = "com.joel.ai-memory-watchdog";
             ProgramArguments = [ "/Users/${user}/.local/bin/ai-memory-ensure" ];
+            EnvironmentVariables = {
+              AI_MEMORY_ENSURE_START_DOCKER = "1";
+              PATH = "/Users/${user}/.orbstack/bin:/opt/homebrew/bin:/usr/bin:/bin";
+            };
             RunAtLoad = true;
             StartInterval = 300;
             StandardOutPath = "/Users/${user}/Library/Logs/ai-memory-watchdog.log";
@@ -120,52 +158,6 @@
           };
         };
 
-        nosleep-auto-off = {
-          enable = true;
-          config = {
-            Label = "com.joel.nosleep-auto-off";
-            ProgramArguments = [ "/Users/${user}/.local/bin/nosleep-auto-off" ];
-            ProcessType = "Background";
-            StartCalendarInterval =
-              map
-                (time: {
-                  Hour = builtins.elemAt time 0;
-                  Minute = builtins.elemAt time 1;
-                })
-                [
-                  [
-                    20
-                    30
-                  ]
-                  [
-                    21
-                    0
-                  ]
-                  [
-                    21
-                    30
-                  ]
-                  [
-                    22
-                    0
-                  ]
-                  [
-                    22
-                    30
-                  ]
-                  [
-                    23
-                    0
-                  ]
-                  [
-                    23
-                    30
-                  ]
-                ];
-            StandardOutPath = "/Users/${user}/.local/state/nosleep/auto-off.log";
-            StandardErrorPath = "/Users/${user}/.local/state/nosleep/auto-off.log";
-          };
-        };
       };
     };
 }

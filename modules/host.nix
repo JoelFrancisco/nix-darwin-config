@@ -11,7 +11,7 @@ in
       config.flake.darwinModules.system
       config.flake.darwinModules.apps
       config.flake.darwinModules.defaults
-      config.flake.darwinModules.services
+      config.flake.darwinModules.nosleep
       {
         nix-homebrew = {
           enable = true;
@@ -30,6 +30,8 @@ in
             config.flake.homeModules.shell
             config.flake.homeModules.terminal
             config.flake.homeModules.ai
+            config.flake.homeModules.desktop
+            config.flake.homeModules.nosleep
           ];
         };
       }

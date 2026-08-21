@@ -1,20 +1,65 @@
 #!/usr/bin/env bash
+# nosleep-auto-off — invoked by launchd (com.joel.nosleep-auto-off) daily at 20:30.
+#
+# Turns macOS "never sleep" OFF via ~/.local/bin/nosleep, but ONLY when BOTH:
+#   (a) nosleep is currently ON  (SleepDisabled=1), and
+#   (b) NO Claude Code instance is *actively running*.
+#
+# "Actively running" == a session whose ~/.claude/sessions/<pid>.json has
+# status=="busy" AND whose pid is still alive. A session that is merely "idle"
+# (waiting for the user) does NOT count. Dead stale session files are ignored.
+#
+# Logs to ~/.local/state/nosleep/auto-off.log
 set -euo pipefail
+
 export PATH="/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
 
-sessions="$HOME/.claude/sessions"
-mkdir -p "${XDG_STATE_HOME:-$HOME/.local/state}/nosleep"
+SESS_DIR="$HOME/.claude/sessions"
+STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/nosleep"
+mkdir -p "$STATE_DIR"
 
-if [[ -d "$sessions" ]]; then
-  for file in "$sessions"/*.json; do
-    [[ -e "$file" ]] || continue
-    pid="$(basename "$file" .json)"
+log() { printf '%s %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*"; }
+
+status_of() {
+  if command -v jq >/dev/null 2>&1; then
+    jq -r '.status // empty' "$1" 2>/dev/null || true
+  else
+    grep -Eo '"status"[[:space:]]*:[[:space:]]*"[^"]*"' "$1" 2>/dev/null \
+      | tail -1 | grep -Eo '"[^"]*"$' | tr -d '"'
+  fi
+}
+
+active_pid=""
+if [[ -d "$SESS_DIR" ]]; then
+  for f in "$SESS_DIR"/*.json; do
+    [[ -e "$f" ]] || continue
+    pid="$(basename "$f" .json)"
     [[ "$pid" =~ ^[0-9]+$ ]] || continue
     kill -0 "$pid" 2>/dev/null || continue
-    [[ "$(jq -r '.status // empty' "$file" 2>/dev/null || true)" != busy ]] || exit 0
+    if [[ "$(status_of "$f")" == "busy" ]]; then
+      active_pid="$pid"
+      break
+    fi
   done
 fi
 
-[[ "$(pmset -g | awk '$1 == "SleepDisabled" { print $2 }')" != 1 ]] || \
-  "$HOME/.local/bin/nosleep" off
+if [[ -n "$active_pid" ]]; then
+  log "SKIP: Claude Code session pid $active_pid is actively running (busy); leaving nosleep untouched."
+  exit 0
+fi
+
+sleep_disabled="$(pmset -g | awk '$1=="SleepDisabled"{print $2}')"
+if [[ "${sleep_disabled:-0}" != "1" ]]; then
+  log "SKIP: nosleep already OFF (SleepDisabled='${sleep_disabled:-unset}'); nothing to do."
+  exit 0
+fi
+
+log "No active Claude Code session and nosleep is ON -> running 'nosleep off'."
+if "$HOME/.local/bin/nosleep" off; then
+  log "OK: nosleep turned OFF."
+else
+  rc=$?
+  log "ERROR: 'nosleep off' failed (exit $rc). Is passwordless sudo for pmset installed? See /etc/sudoers.d/nosleep-pmset."
+  exit "$rc"
+fi
 

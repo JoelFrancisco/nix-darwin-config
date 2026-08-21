@@ -2,11 +2,19 @@
 set -euo pipefail
 
 export PATH="$HOME/.orbstack/bin:/opt/homebrew/bin:/usr/bin:/bin:$PATH"
-d() { docker --context orbstack "$@"; }
+orbstack_docker() { docker --context orbstack "$@"; }
 [[ ! -f "$HOME/.config/ai-memory/watchdog.disabled" ]] || exit 0
-d info >/dev/null 2>&1 || exit 0
+if ! orbstack_docker info >/dev/null 2>&1; then
+  [[ "${AI_MEMORY_ENSURE_START_DOCKER:-0}" == 1 ]] || exit 0
+  open -a OrbStack || exit 0
+  for _ in $(seq 1 30); do
+    orbstack_docker info >/dev/null 2>&1 && break
+    sleep 2
+  done
+  orbstack_docker info >/dev/null 2>&1 || exit 0
+fi
 
-state="$(d inspect -f '{{.State.Status}}' ai-memory 2>/dev/null || true)"
+state="$(orbstack_docker inspect -f '{{.State.Status}}' ai-memory 2>/dev/null || true)"
 case "$state" in
   running) exit 0 ;;
   "")
@@ -24,5 +32,5 @@ case "$state" in
         -e AI_MEMORY_ALLOWED_HOSTS="localhost,127.0.0.1,::1,host.docker.internal" \
         akitaonrails/ai-memory:latest'
     ;;
-  *) d start ai-memory >/dev/null ;;
+  *) orbstack_docker start ai-memory >/dev/null ;;
 esac

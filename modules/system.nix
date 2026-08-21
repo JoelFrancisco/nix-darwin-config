@@ -61,7 +61,6 @@
       gnused
       jq
       neovim
-      nodejs_24
       ripgrep
       rsync
       shellcheck

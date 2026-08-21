@@ -70,8 +70,22 @@
         bind -n M-Up switch-client -p
         bind -n M-Down switch-client -n
 
-        bind-key T run-shell 'sesh connect "$(sesh list --icons | fzf-tmux -p 80%,70% --no-sort --ansi --prompt "⚡  ")"'
+        bind-key "T" run-shell "sesh connect \"$(
+          sesh list --icons | fzf-tmux -p 80%,70% \
+            --no-sort --ansi --border-label ' sesh ' --prompt '⚡  ' \
+            --header '  ^a all ^t tmux ^g configs ^x zoxide ^d tmux kill ^f find' \
+            --bind 'tab:down,btab:up' \
+            --bind 'ctrl-a:change-prompt(⚡  )+reload(sesh list --icons)' \
+            --bind 'ctrl-t:change-prompt(🪟  )+reload(sesh list -t --icons)' \
+            --bind 'ctrl-g:change-prompt(⚙️  )+reload(sesh list -c --icons)' \
+            --bind 'ctrl-x:change-prompt(📁  )+reload(sesh list -z --icons)' \
+            --bind 'ctrl-f:change-prompt(🔎  )+reload(fd -H -d 2 -t d -E .Trash . ~)' \
+            --bind 'ctrl-d:execute(tmux kill-session -t {2..})+change-prompt(⚡  )+reload(sesh list --icons)' \
+            --preview-window 'right:55%' \
+            --preview 'sesh preview {}'
+        )\""
         bind-key W run-shell 'sesh window "$(sesh window | fzf-tmux -p 60%,50% --prompt "🪟  ")"'
+        bind-key M command-prompt -p "new project (under ~/Work):" "run-shell 'mkp ~/Work/%1 >/dev/null && sesh connect ~/Work/%1'"
 
         set -ag terminal-overrides ",*:RGB"
         set -g renumber-windows on
@@ -142,17 +156,21 @@
       settings = "prefix+s"
       detach = "prefix+d"
       reload_config = "prefix+q"
+      open_notification_target = "prefix+o"
       workspace_picker = ["prefix+w", "prefix+shift+t"]
+      goto = "prefix+g"
       new_workspace = "prefix+shift+c"
       rename_workspace = "prefix+shift+r"
       close_workspace = "prefix+shift+k"
       previous_workspace = ["prefix+shift+p", "alt+up"]
       next_workspace = ["prefix+shift+n", "alt+down"]
+      switch_workspace = "prefix+shift+1..9"
       new_tab = "prefix+c"
       rename_tab = "prefix+r"
       close_tab = "prefix+k"
       previous_tab = "alt+left"
       next_tab = "alt+right"
+      switch_tab = "alt+1..9"
       split_horizontal = "prefix+h"
       split_vertical = "prefix+v"
       close_pane = "prefix+x"
@@ -160,38 +178,69 @@
       focus_pane_down = "ctrl+alt+down"
       focus_pane_up = "ctrl+alt+up"
       focus_pane_right = "ctrl+alt+right"
+      resize_mode = "prefix+shift+z"
       zoom = "prefix+z"
       edit_scrollback = "prefix+["
+      rename_pane = "prefix+alt+p"
+      focus_agent = "prefix+alt+1..9"
       toggle_sidebar = "prefix+b"
+
+      [[keys.command]]
+      key = "ctrl+alt+shift+left"
+      type = "shell"
+      command = '"$HERDR_BIN_PATH" pane resize --pane "$HERDR_ACTIVE_PANE_ID" --direction left --amount 5'
+      description = "resize pane left"
+
+      [[keys.command]]
+      key = "ctrl+alt+shift+down"
+      type = "shell"
+      command = '"$HERDR_BIN_PATH" pane resize --pane "$HERDR_ACTIVE_PANE_ID" --direction down --amount 5'
+      description = "resize pane down"
+
+      [[keys.command]]
+      key = "ctrl+alt+shift+up"
+      type = "shell"
+      command = '"$HERDR_BIN_PATH" pane resize --pane "$HERDR_ACTIVE_PANE_ID" --direction up --amount 5'
+      description = "resize pane up"
+
+      [[keys.command]]
+      key = "ctrl+alt+shift+right"
+      type = "shell"
+      command = '"$HERDR_BIN_PATH" pane resize --pane "$HERDR_ACTIVE_PANE_ID" --direction right --amount 5'
+      description = "resize pane right"
+
       [ui]
       sidebar_width = 18
       sidebar_min_width = 14
       sidebar_max_width = 28
       sidebar_collapsed_mode = "hidden"
       mouse_capture = true
+      host_cursor = "native"
       confirm_close = true
+      prompt_new_tab_name = false
       pane_borders = true
       pane_gaps = true
       show_agent_labels_on_pane_borders = true
       hide_tab_bar_when_single_tab = true
+      agent_panel_sort = "spaces"
       accent = "blue"
       [ui.toast]
       delivery = "terminal"
       delay_seconds = 2
+      [ui.toast.clipboard]
+      enabled = true
       [ui.sound]
       enabled = false
       [session]
       resume_agents_on_restore = true
       [remote]
       manage_ssh_config = true
+      [experimental]
+      pane_history = false
+      allow_nested = false
+      kitty_graphics = false
       [advanced]
       scrollback_limit_bytes = 10000000
-    '';
-
-    home.file.".ai-jail".text = ''
-      no_status_bar = true
-      no_save_config = true
-      private_home = false
     '';
   };
 }

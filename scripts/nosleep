@@ -1,13 +1,26 @@
 #!/usr/bin/env bash
+# nosleep — liga/desliga o "nunca dormir" do macOS via pmset
+# (mesma config do Castrozan/.dotfiles hosts/kira, em forma de toggle)
+#
+#   nosleep on      zera sleep/displaysleep/disksleep/standby/autopoweroff/
+#                   hibernatemode (bateria e tomada) e seta disablesleep 1
+#                   — não dorme nem de tampa fechada
+#   nosleep off     restaura os valores salvos no "on" e seta disablesleep 0
+#   nosleep status  mostra o estado atual (default sem argumento)
+#
+# on/off usam sudo. Backup dos valores em ~/.local/state/nosleep/.
+
 set -euo pipefail
 
-state_dir="${XDG_STATE_HOME:-$HOME/.local/state}/nosleep"
-backup="$state_dir/pmset-backup.env"
-keys=(sleep displaysleep disksleep standby autopoweroff hibernatemode)
-fallback_b=(sleep 1 displaysleep 2 disksleep 10 standby 1 hibernatemode 3)
-fallback_c=(sleep 0 displaysleep 10 disksleep 10 standby 1 hibernatemode 3)
+STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/nosleep"
+BACKUP="$STATE_DIR/pmset-backup.env"
+KEYS=(sleep displaysleep disksleep standby autopoweroff hibernatemode)
 
-get_val() {
+# Usados no "off" se o backup não existir (valores desta máquina, 2026-06-12)
+FALLBACK_B="sleep 1 displaysleep 2 disksleep 10 standby 1 hibernatemode 3"
+FALLBACK_C="sleep 0 displaysleep 10 disksleep 10 standby 1 hibernatemode 3"
+
+get_val() { # $1 = Battery|AC, $2 = chave pmset
   pmset -g custom | awk -v src="$1" -v key="$2" '
     /^Battery Power:/ { cur = "Battery" }
     /^AC Power:/      { cur = "AC" }
@@ -15,52 +28,84 @@ get_val() {
   '
 }
 
-is_on() { [[ "$(pmset -g | awk '$1 == "SleepDisabled" { print $2 }')" == "1" ]]; }
+is_on() {
+  [[ "$(pmset -g | awk '$1 == "SleepDisabled" { print $2 }')" == "1" ]]
+}
+
+cmd_on() {
+  local k v
+  if [[ ! -f "$BACKUP" ]]; then
+    mkdir -p "$STATE_DIR"
+    for k in "${KEYS[@]}"; do
+      echo "b_$k=$(get_val Battery "$k")"
+      echo "c_$k=$(get_val AC "$k")"
+    done > "$BACKUP"
+  fi
+
+  # só mexe nas chaves que existem nesta máquina/fonte de energia
+  local args_b=() args_c=()
+  for k in "${KEYS[@]}"; do
+    v="$(get_val Battery "$k")"
+    if [[ -n "$v" ]]; then args_b+=("$k" 0); fi
+    v="$(get_val AC "$k")"
+    if [[ -n "$v" ]]; then args_c+=("$k" 0); fi
+  done
+  if ((${#args_b[@]})); then sudo pmset -b "${args_b[@]}"; fi
+  if ((${#args_c[@]})); then sudo pmset -c "${args_c[@]}"; fi
+  sudo pmset -a disablesleep 1
+  echo "nosleep: ON — não dorme nem de tampa fechada (bateria que lute)"
+}
+
+cmd_off() {
+  local k bv cv
+  sudo pmset -a disablesleep 0
+  if [[ -f "$BACKUP" ]]; then
+    # shellcheck disable=SC1090
+    source "$BACKUP"
+    local args_b=() args_c=()
+    for k in "${KEYS[@]}"; do
+      bv="b_$k" cv="c_$k"
+      if [[ -n "${!bv:-}" ]]; then args_b+=("$k" "${!bv}"); fi
+      if [[ -n "${!cv:-}" ]]; then args_c+=("$k" "${!cv}"); fi
+    done
+    if ((${#args_b[@]})); then sudo pmset -b "${args_b[@]}"; fi
+    if ((${#args_c[@]})); then sudo pmset -c "${args_c[@]}"; fi
+    rm -f "$BACKUP"
+    echo "nosleep: OFF — valores anteriores restaurados"
+  else
+    # shellcheck disable=SC2086
+    sudo pmset -b $FALLBACK_B
+    # shellcheck disable=SC2086
+    sudo pmset -c $FALLBACK_C
+    echo "nosleep: OFF — sem backup, apliquei os defaults desta máquina"
+  fi
+}
+
+cmd_status() {
+  if is_on; then
+    echo "nosleep: ON (disablesleep=1 — não dorme nem de tampa fechada)"
+  else
+    echo "nosleep: OFF (sleep normal)"
+  fi
+  if [[ -f "$BACKUP" ]]; then
+    echo "backup salvo em $BACKUP"
+  fi
+  echo
+  pmset -g custom | awk '
+    /Power:/ { print; next }
+    $1 ~ /^(sleep|displaysleep|disksleep|standby|autopoweroff|hibernatemode)$/ {
+      printf "  %-14s %s\n", $1, $2
+    }
+  '
+}
 
 case "${1:-status}" in
-  on)
-    if [[ ! -f "$backup" ]]; then
-      mkdir -p "$state_dir"
-      for key in "${keys[@]}"; do
-        echo "b_$key=$(get_val Battery "$key")"
-        echo "c_$key=$(get_val AC "$key")"
-      done >"$backup"
-    fi
-    args_b=() args_c=()
-    for key in "${keys[@]}"; do
-      [[ -z "$(get_val Battery "$key")" ]] || args_b+=("$key" 0)
-      [[ -z "$(get_val AC "$key")" ]] || args_c+=("$key" 0)
-    done
-    ((${#args_b[@]} == 0)) || sudo pmset -b "${args_b[@]}"
-    ((${#args_c[@]} == 0)) || sudo pmset -c "${args_c[@]}"
-    sudo pmset -a disablesleep 1
-    echo "nosleep: ON — sleep and lid sleep disabled"
+  on)     cmd_on ;;
+  off)    cmd_off ;;
+  status) cmd_status ;;
+  *)
+    echo "uso: nosleep [on|off|status]" >&2
+    exit 2
     ;;
-  off)
-    sudo pmset -a disablesleep 0
-    if [[ -f "$backup" ]]; then
-      # shellcheck disable=SC1090
-      source "$backup"
-      args_b=() args_c=()
-      for key in "${keys[@]}"; do
-        b="b_$key" c="c_$key"
-        [[ -z "${!b:-}" ]] || args_b+=("$key" "${!b}")
-        [[ -z "${!c:-}" ]] || args_c+=("$key" "${!c}")
-      done
-      ((${#args_b[@]} == 0)) || sudo pmset -b "${args_b[@]}"
-      ((${#args_c[@]} == 0)) || sudo pmset -c "${args_c[@]}"
-      rm -f "$backup"
-    else
-      sudo pmset -b "${fallback_b[@]}"
-      sudo pmset -c "${fallback_c[@]}"
-    fi
-    echo "nosleep: OFF — sleep settings restored"
-    ;;
-  status)
-    is_on && echo "nosleep: ON" || echo "nosleep: OFF"
-    [[ ! -f "$backup" ]] || echo "backup: $backup"
-    pmset -g custom | awk '/Power:/ { print; next } $1 ~ /^(sleep|displaysleep|disksleep|standby|autopoweroff|hibernatemode)$/ { printf "  %-14s %s\n", $1, $2 }'
-    ;;
-  *) echo "usage: nosleep [on|off|status]" >&2; exit 2 ;;
 esac
 
