@@ -24,6 +24,19 @@ loaded Executor and AI-memory launch agents. The run ended with:
 VM activation and smoke tests passed on nix-darwin-config-test (192.168.64.9)
 ```
 
+## LazyVim regression
+
+On 2026-08-22, the same Tahoe guest passed a two-activation, rebooting
+regression run after Neovim was moved to the managed LazyVim starter config.
+The smoke suite verified `nvim`, the LazyVim bootstrap files, every cached
+Homebrew CLI and app, the Raycast hotkey, and the Executor and AI-memory agents.
+
+This run used `VM_SKIP_NETWORK_UPDATES=1` after the complete online acceptance
+above because the Homebrew and Nix CDNs repeatedly stalled. That mode uses the
+previously provisioned guest, copies the exact host-built Nix closure, and skips
+only network refresh/bootstrap actions; normal `macbook` activation remains
+online and tracks the latest vendor releases.
+
 ## VM-only limitations
 
 - OrbStack, Tart, and UTM are installed but their nested virtualization engines
