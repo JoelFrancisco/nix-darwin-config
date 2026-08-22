@@ -57,7 +57,16 @@ in
             /bin/cp "$source_pkg" "$stage_dir/$cask.pkg"
             /usr/sbin/chown root:wheel "$stage_dir/$cask.pkg"
             /bin/chmod 600 "$stage_dir/$cask.pkg"
-            /usr/sbin/installer -pkg "$stage_dir/$cask.pkg" -target /
+            if ! /usr/sbin/installer -pkg "$stage_dir/$cask.pkg" -target /; then
+              if /usr/sbin/ioreg -rd1 -c IOPlatformExpertDevice | /usr/bin/grep -q VirtualMac \
+                && [ -d "$app_path" ]; then
+                echo "warning: $cask installed but its GUI post-install launch is unavailable in this macOS VM" >&2
+              else
+                /bin/rm -f "$stage_dir/$cask.pkg"
+                /bin/rmdir "$stage_dir"
+                return 1
+              fi
+            fi
             /bin/rm -f "$stage_dir/$cask.pkg"
             /bin/rmdir "$stage_dir"
             /usr/bin/printf '%s\n' "$version" > "$version_file"
