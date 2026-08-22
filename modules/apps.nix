@@ -55,6 +55,7 @@ in
         "herdr"
         "hermes-agent"
         "secretspec"
+        "cirruslabs/cli/softnet"
         "cirruslabs/cli/tart"
       ];
 
