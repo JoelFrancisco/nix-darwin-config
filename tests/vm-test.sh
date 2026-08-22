@@ -62,6 +62,18 @@ if [[ ! -x /nix/var/nix/profiles/default/bin/nix ]]; then
 fi
 . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
 
+if ! nix store ping --store daemon >/dev/null 2>&1; then
+  if ! echo admin | sudo -S launchctl print system/org.nixos.nix-daemon >/dev/null 2>&1; then
+    echo admin | sudo -S launchctl bootstrap system /Library/LaunchDaemons/org.nixos.nix-daemon.plist
+  fi
+  echo admin | sudo -S launchctl kickstart -k system/org.nixos.nix-daemon
+  for _ in $(seq 1 30); do
+    nix store ping --store daemon >/dev/null 2>&1 && break
+    sleep 1
+  done
+  nix store ping --store daemon >/dev/null
+fi
+
 # The official Nix installer owns these files first. nix-darwin deliberately
 # requires an explicit backup before it takes them over on the initial switch.
 for shell_file in /etc/bashrc /etc/zshrc; do
@@ -93,6 +105,14 @@ done
 ssh "${ssh_options[@]}" admin@"$ip" 'bash -s' <<'REMOTE'
 set -euo pipefail
 . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
+if ! nix store ping --store daemon >/dev/null 2>&1; then
+  echo admin | sudo -S launchctl kickstart -k system/org.nixos.nix-daemon
+  for _ in $(seq 1 30); do
+    nix store ping --store daemon >/dev/null 2>&1 && break
+    sleep 1
+  done
+  nix store ping --store daemon >/dev/null
+fi
 echo admin | sudo -S /run/current-system/sw/bin/darwin-rebuild switch --flake /Users/joel.filho/Work/nix-darwin-config#macbook
 echo admin | sudo -S -u joel.filho /Users/joel.filho/.local/bin/ai-tools-update
 echo admin | sudo -S -u joel.filho /Users/joel.filho/Work/nix-darwin-config/tests/smoke-test.sh
