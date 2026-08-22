@@ -9,9 +9,12 @@ ssh-keygen -q -t ed25519 -N '' -f "$key_dir/id_ed25519"
 ssh_options=(
   -i "$key_dir/id_ed25519"
   -o IdentitiesOnly=yes
+  -o ControlMaster=auto
+  -o ControlPath="$key_dir/control"
+  -o ControlPersist=600
   -o StrictHostKeyChecking=no
   -o UserKnownHostsFile=/dev/null
-  -o ConnectTimeout=5
+  -o ConnectTimeout=15
 )
 
 if ! tart list --source local | awk 'NR > 1 { print $2 }' | grep -qx "$vm_name"; then
