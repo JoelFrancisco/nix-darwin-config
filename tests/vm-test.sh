@@ -41,7 +41,9 @@ done
 # every provisioning command non-interactive. The private key is deleted by
 # the EXIT trap and never enters the guest or repository.
 key_b64="$(base64 <"$key_dir/id_ed25519.pub" | tr -d '\n')"
-VM_IP="$ip" VM_KEY_B64="$key_b64" expect <<'EXPECT'
+key_installed=false
+for _ in $(seq 1 20); do
+  if VM_IP="$ip" VM_KEY_B64="$key_b64" expect <<'EXPECT'
 set timeout 30
 set remote "umask 077; mkdir -p ~/.ssh; echo '$env(VM_KEY_B64)' | base64 -D >> ~/.ssh/authorized_keys"
 spawn ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null admin@$env(VM_IP) $remote
@@ -52,7 +54,23 @@ expect {
 catch wait result
 exit [lindex $result 3]
 EXPECT
-ssh "${ssh_options[@]}" admin@"$ip" true
+  then
+    key_installed=true
+    break
+  fi
+  sleep 3
+done
+$key_installed || { echo "Could not install the ephemeral VM SSH key" >&2; exit 1; }
+
+key_ready=false
+for _ in $(seq 1 20); do
+  if ssh "${ssh_options[@]}" admin@"$ip" true; then
+    key_ready=true
+    break
+  fi
+  sleep 3
+done
+$key_ready || { echo "VM did not accept the ephemeral SSH key" >&2; exit 1; }
 
 tar --exclude=.git --exclude=result --exclude='.vm-console.log' -C "$repo_root" -cf - . | \
   ssh "${ssh_options[@]}" admin@"$ip" 'rm -rf /tmp/nix-darwin-config && mkdir /tmp/nix-darwin-config && tar -C /tmp/nix-darwin-config -xf -'
