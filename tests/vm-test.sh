@@ -107,6 +107,7 @@ if ! id joel.filho >/dev/null 2>&1; then
   echo admin | sudo -S sysadminctl -addUser joel.filho -fullName 'Joel Francisco' -password vm-test-only -admin
 fi
 echo admin | sudo -S mkdir -p /Users/joel.filho/Work
+echo admin | sudo -S rm -rf /Users/joel.filho/Work/nix-darwin-config
 echo admin | sudo -S cp -R /tmp/nix-darwin-config /Users/joel.filho/Work/nix-darwin-config
 echo admin | sudo -S chown -R joel.filho:staff /Users/joel.filho
 
