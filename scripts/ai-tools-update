@@ -1,29 +1,65 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-export PATH="/opt/homebrew/bin:$HOME/.local/bin:$HOME/.local/share/npm/bin:/usr/bin:/bin:$PATH"
+current_user="$(id -un)"
+export PATH="$HOME/.local/bin:$HOME/.opencode/bin:$HOME/.nix-profile/bin:/etc/profiles/per-user/$current_user/bin:/run/current-system/sw/bin:/opt/homebrew/bin:$HOME/.local/share/npm/bin:/usr/bin:/bin:$PATH"
+export CODEX_NON_INTERACTIVE=1
 mkdir -p "$HOME/.local" "$HOME/.local/state/ai-tools"
 
+lock_file="$HOME/.local/state/ai-tools/update.lock"
+if ! /usr/bin/shlock -f "$lock_file" -p "$$"; then
+  echo "ai-tools-update: another update is already running"
+  exit 0
+fi
+
+installer_dir=""
+cleanup() {
+  [[ -z "$installer_dir" ]] || rm -rf "$installer_dir"
+  rm -f "$lock_file"
+}
+trap cleanup EXIT
+
+# Migrate CLI installs previously managed by this configuration. The separate
+# Claude and Codex desktop applications remain installed.
+for old_cask in claude-code@latest codex; do
+  if brew list --cask "$old_cask" >/dev/null 2>&1; then
+    brew uninstall --cask --force "$old_cask"
+  fi
+done
+if brew list --formula opencode >/dev/null 2>&1; then
+  brew uninstall --formula --force opencode
+fi
+
+# Remove packages superseded by native first-party installers.
+npm uninstall --global --prefix "$HOME/.local" opencode-ai @opencode-ai/cli @openai/codex || true
+
+# Fast-moving agent CLIs bypass Homebrew and use their first-party installers.
+installer_dir="$(mktemp -d)"
+
+run_official_installer() {
+  local url="$1"
+  local name="$2"
+  shift 2
+  curl -fsSL "$url" -o "$installer_dir/$name"
+  /bin/bash "$installer_dir/$name" "$@"
+}
+
+run_official_installer https://claude.ai/install.sh claude-install latest
+run_official_installer https://chatgpt.com/codex/install.sh codex-install
+
+# OpenCode 1 and the OpenCode 2 beta intentionally coexist. Their official
+# installers share ~/.opencode/bin and publish distinct executable names.
+run_official_installer https://opencode.ai/install opencode-install --no-modify-path
+run_official_installer https://opencode.ai/v2/install opencode2-install --no-modify-path
+
+ln -sfn "$HOME/.opencode/bin/opencode" "$HOME/.local/bin/opencode"
+ln -sfn "$HOME/.opencode/bin/opencode" "$HOME/.local/bin/opencode1"
+ln -sfn "$HOME/.opencode/bin/opencode2" "$HOME/.local/bin/opencode2"
+
+# Slower package-manager refreshes run after the latency-sensitive agent CLIs.
+npm install --global --prefix "$HOME/.local" executor@latest
 brew update || true
 brew upgrade --formula ai-jail cliproxyapi herdr hermes-agent secretspec cirruslabs/cli/tart || true
-brew upgrade --cask --greedy claude claude-code@latest codex codex-app || true
-
-npm install --global --prefix "$HOME/.local" \
-  opencode-ai@latest \
-  @opencode-ai/cli@next \
-  executor@latest
-
-if [[ -x "$HOME/.local/bin/opencode" ]]; then
-  ln -sfn "$HOME/.local/bin/opencode" "$HOME/.local/bin/opencode1"
-fi
-
-# The v2 prerelease currently publishes its executable as `lildax`; retain the
-# stable name used by aliases and T3 Code as upstream prereleases evolve.
-if [[ -x "$HOME/.local/bin/lildax" ]]; then
-  ln -sfn "$HOME/.local/bin/lildax" "$HOME/.local/bin/opencode2"
-fi
-
-command -v claude >/dev/null 2>&1 && claude update || true
 command -v hermes >/dev/null 2>&1 && hermes update --yes || true
 "$HOME/.local/bin/ai-skills-update" || true
 "$HOME/.local/bin/t3-nightly-update" || true

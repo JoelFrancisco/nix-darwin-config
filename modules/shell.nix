@@ -7,6 +7,7 @@
       stateVersion = "25.11";
       sessionPath = [
         "$HOME/.local/bin"
+        "$HOME/.opencode/bin"
         "$HOME/.local/share/npm/bin"
       ];
       sessionVariables = {

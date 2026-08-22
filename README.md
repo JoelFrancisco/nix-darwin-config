@@ -55,7 +55,7 @@ Change the vault in `config/secretspec.toml` and `SECRETSPEC_PROVIDER` in `modul
 The two update models are deliberate:
 
 - Nix packages are pinned in `flake.lock`. The scheduled workflow opens an update PR so failures can be reviewed and generations remain rollback-safe.
-- GUI apps and vendor AI tools update on activation. `ai-tools-update` also refreshes OpenCode 1 (`latest`), OpenCode 2 (`next`), Executor, Claude, Hermes, the allow-listed public skills, and the ARM64 T3 Code nightly prerelease.
+- GUI apps update through Homebrew and their built-in updaters. Every four hours and on login, `ai-tools-update` uses the official native installers for Claude Code and Codex CLI, the official OpenCode 1 and OpenCode 2 installer endpoints, and the official ARM64 T3 Code nightly GitHub release. It also refreshes Executor, Hermes, and the allow-listed public skills.
 
 No Betha repository, skill, project trust entry, VPN credential, agent history, auth database, or runtime memory is copied into this repository.
 

@@ -160,15 +160,14 @@
         };
 
         ai-tools-latest = {
-          enable = true;
+          enable = !offlineTest;
           domain = "user";
           config = {
             Label = "com.joel.ai-tools-latest";
             ProgramArguments = [ "/Users/${user}/.local/bin/ai-tools-update" ];
-            StartCalendarInterval = {
-              Hour = 4;
-              Minute = 15;
-            };
+            EnvironmentVariables.PATH = "/Users/${user}/.local/bin:/Users/${user}/.nix-profile/bin:/etc/profiles/per-user/${user}/bin:/run/current-system/sw/bin:/opt/homebrew/bin:/usr/bin:/bin";
+            RunAtLoad = true;
+            StartInterval = 14400;
             StandardOutPath = "/Users/${user}/.local/state/ai-tools/update.log";
             StandardErrorPath = "/Users/${user}/.local/state/ai-tools/update.log";
           };

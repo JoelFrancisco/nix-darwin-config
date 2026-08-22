@@ -130,8 +130,6 @@ in
           "1password-cli"
           "bruno"
           "claude"
-          "claude-code@latest"
-          "codex"
           "codex-app"
           "cursor"
           "discord"

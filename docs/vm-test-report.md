@@ -37,6 +37,15 @@ previously provisioned guest, copies the exact host-built Nix closure, and skips
 only network refresh/bootstrap actions; normal `macbook` activation remains
 online and tracks the latest vendor releases.
 
+## Official AI installer regression
+
+On 2026-08-22, the guest again passed both offline activations, reboot, and all
+smoke checks after the Claude Code, Codex CLI, and OpenCode casks/packages were
+replaced with their first-party installers. The same installers were also run
+against an isolated macOS home, producing Claude Code 2.1.239, Codex CLI
+0.149.0, OpenCode 1.18.21, and OpenCode 2 beta 17887. The current T3 Nightly
+asset passed its GitHub SHA-256 digest, Developer ID team, and Gatekeeper checks.
+
 ## VM-only limitations
 
 - OrbStack, Tart, and UTM are installed but their nested virtualization engines

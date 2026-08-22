@@ -3,15 +3,23 @@ set -euo pipefail
 
 export PATH="/opt/homebrew/bin:/usr/bin:/bin:$PATH"
 api="https://api.github.com/repos/pingdotgg/t3code/releases?per_page=20"
-url="$(curl -fsSL "$api" | jq -r '[.[] | select(.prerelease == true) | .assets[] | select(.name | test("arm64\\.zip$")) | select(.name | endswith(".blockmap") | not)][0].browser_download_url // empty')"
-[[ -n "$url" ]] || { echo "t3-nightly-update: no arm64 nightly asset found" >&2; exit 1; }
+release="$(curl -fsSL "$api" | jq -r '[.[] | select(.prerelease == true and (.tag_name | test("-nightly\\."))) | .assets[] | select(.name | test("^T3-Code-.*-arm64\\.zip$"))][0] | select(.browser_download_url and (.digest | startswith("sha256:"))) | [.browser_download_url, .digest] | @tsv')"
+[[ -n "$release" ]] || { echo "t3-nightly-update: no checksummed arm64 nightly asset found" >&2; exit 1; }
+IFS=$'\t' read -r url digest <<<"$release"
+expected_sha256="${digest#sha256:}"
 
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 curl -fsSL "$url" -o "$tmp/t3.zip"
+actual_sha256="$(shasum -a 256 "$tmp/t3.zip" | awk '{ print $1 }')"
+[[ "$actual_sha256" = "$expected_sha256" ]] || { echo "t3-nightly-update: checksum verification failed" >&2; exit 1; }
 ditto -x -k "$tmp/t3.zip" "$tmp/unpacked"
 app="$(find "$tmp/unpacked" -maxdepth 2 -type d -name '*.app' -print -quit)"
 [[ -n "$app" ]] || { echo "t3-nightly-update: archive contains no app" >&2; exit 1; }
+codesign --verify --deep --strict "$app"
+team_id="$(codesign -dv --verbose=2 "$app" 2>&1 | sed -n 's/^TeamIdentifier=//p')"
+[[ "$team_id" = "ARK85ZXQ4Z" ]] || { echo "t3-nightly-update: unexpected signing team" >&2; exit 1; }
+spctl --assess --type execute "$app"
 
 mkdir -p "$HOME/Applications"
 target="$HOME/Applications/T3 Code (Nightly).app"
@@ -24,4 +32,3 @@ else
   [[ ! -e "$backup" ]] || mv "$backup" "$target"
   exit 1
 fi
-
