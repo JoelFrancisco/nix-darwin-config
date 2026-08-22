@@ -23,15 +23,20 @@ in
       fi
     '';
 
-    # Homebrew 6 invalidates trust while migrating an already-present tap,
-    # before `bundle` fetches that tap's dependencies. Scope the bypass to the
-    # declarative bundle run, then restore the exact trust set for manual use.
+    # Homebrew 6's Bundle fetch subprocess loses trust for a dependency of an
+    # already-present Tart tap. Install Tart immediately after Bundle with an
+    # explicit, minimal trust set until that upstream migration bug is fixed.
     system.activationScripts.postActivation.text = ''
       if [ -x /opt/homebrew/bin/brew ]; then
         /usr/bin/sudo -u ${user} -H /opt/homebrew/bin/brew trust --tap anomalyco/tap
         /usr/bin/sudo -u ${user} -H /opt/homebrew/bin/brew trust --tap akitaonrails/tap
         /usr/bin/sudo -u ${user} -H /opt/homebrew/bin/brew trust --tap cirruslabs/cli
         /usr/bin/sudo -u ${user} -H /opt/homebrew/bin/brew trust --formula cirruslabs/cli/softnet
+        if /usr/bin/sudo -u ${user} -H /opt/homebrew/bin/brew list --formula cirruslabs/cli/tart >/dev/null 2>&1; then
+          /usr/bin/sudo -u ${user} -H /opt/homebrew/bin/brew upgrade --formula cirruslabs/cli/tart
+        else
+          /usr/bin/sudo -u ${user} -H /opt/homebrew/bin/brew install --formula cirruslabs/cli/tart
+        fi
       fi
     '';
 
@@ -43,7 +48,6 @@ in
         upgrade = true;
         # Preserve unrelated packages already owned by this Mac.
         cleanup = "none";
-        extraEnv.HOMEBREW_NO_REQUIRE_TAP_TRUST = "1";
       };
 
       taps = [
@@ -68,8 +72,6 @@ in
         "herdr"
         "hermes-agent"
         "secretspec"
-        "cirruslabs/cli/softnet"
-        "cirruslabs/cli/tart"
       ];
 
       casks = map latestCask [

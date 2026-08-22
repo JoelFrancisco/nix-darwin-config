@@ -5,7 +5,7 @@ export PATH="/opt/homebrew/bin:$HOME/.local/bin:$HOME/.local/share/npm/bin:/usr/
 mkdir -p "$HOME/.local" "$HOME/.local/state/ai-tools"
 
 brew update || true
-brew upgrade --formula ai-jail cliproxyapi herdr hermes-agent secretspec || true
+brew upgrade --formula ai-jail cliproxyapi herdr hermes-agent secretspec cirruslabs/cli/tart || true
 brew upgrade --cask --greedy claude claude-code@latest codex codex-app || true
 
 npm install --global --prefix "$HOME/.local" \
