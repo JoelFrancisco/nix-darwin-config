@@ -3,7 +3,7 @@ model_reasoning_effort = "high"
 service_tier = "default"
 approvals_reviewer = "user"
 
-[projects."/Users/joel.filho/Work"]
+[projects."@HOME@/Work"]
 trust_level = "trusted"
 
 [mcp_servers.executor]

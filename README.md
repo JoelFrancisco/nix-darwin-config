@@ -1,28 +1,73 @@
 # nix-darwin-config
 
-Private, dendritic macOS configuration for an Apple Silicon MacBook. The flake combines:
+Public, dendritic macOS configuration for an Apple Silicon MacBook. It is a
+working personal configuration and a reference for building a similar setup.
+The flake combines:
 
 - nixpkgs unstable, nix-darwin, Home Manager, flake-parts, and import-tree
 - Nix for stable CLI/system packages
 - nix-homebrew + nix-darwin's Homebrew module for proprietary and fast-moving apps
 - SecretSpec with the 1Password provider for runtime secrets
-- Neovim managed by Home Manager with Joel's current LazyVim starter configuration
+- Neovim managed by Home Manager with a LazyVim starter configuration
 - per-project `devenv` environments instead of global language stacks
 
 `macbook` is the only host today. Every file under `modules/` is a flake-parts module and contributes a feature-owned Darwin or Home Manager module.
 
-## Bootstrap
+## What it installs
+
+The configuration includes Ghostty, LazyVim, tmux, Herdr, common Unix tools,
+OrbStack, Tart, UTM, browsers, editors, communication apps, 1Password,
+SecretSpec, and a local AI toolchain. Claude Code, Codex CLI, both OpenCode
+channels, and T3 Code Nightly use their upstream release channels rather than
+waiting for Homebrew package updates. See `modules/apps.nix` and
+`scripts/ai-tools-update` for the complete lists.
+
+## Prerequisites
+
+- An Apple Silicon Mac running a supported macOS release
+- Administrator access
+- Xcode Command Line Tools
+- A 1Password account and the desktop app's CLI integration for runtime secrets
+- A fork of this repository if you want to maintain your own configuration
+
+## Customize before deployment
+
+This checkout targets the `joel.filho` account. In a fork, edit the three
+identity values at the top of `modules/host.nix`:
+
+```nix
+user = "your-macos-short-name";
+gitName = "Your Name";
+gitEmail = "your-github-noreply-address";
+```
+
+Review the application list in `modules/apps.nix`, macOS defaults in
+`modules/defaults.nix`, and agent settings under `config/`. Configuration files
+use `@HOME@` where Home Manager must substitute the selected user's home path.
+
+## Deploy
 
 The target account is `joel.filho` on `aarch64-darwin`.
 
 ```bash
+# 1. Install Apple's command-line developer tools.
 xcode-select --install
+
+# 2. Install multi-user Nix, then load it in this shell.
 curl -L https://nixos.org/nix/install | sh -s -- --daemon
 . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
-sudo mv /etc/bashrc /etc/bashrc.before-nix-darwin
-sudo mv /etc/zshrc /etc/zshrc.before-nix-darwin
-git clone git@github.com:JoelFrancisco/nix-darwin-config.git ~/Work/nix-darwin-config
+
+# 3. Clone and validate the configuration.
+mkdir -p ~/Work
+git clone https://github.com/JoelFrancisco/nix-darwin-config.git ~/Work/nix-darwin-config
 cd ~/Work/nix-darwin-config
+nix flake check --print-build-logs
+
+# 4. Preserve installer-owned shell files before nix-darwin takes ownership.
+test ! -e /etc/bashrc || sudo mv /etc/bashrc /etc/bashrc.before-nix-darwin
+test ! -e /etc/zshrc || sudo mv /etc/zshrc /etc/zshrc.before-nix-darwin
+
+# 5. Perform the first switch using nix-darwin's bootstrap command.
 sudo nix run nix-darwin/master#darwin-rebuild -- switch --flake .#macbook
 ```
 
@@ -32,23 +77,39 @@ Subsequent rebuilds:
 darwin-rebuild switch --flake ~/Work/nix-darwin-config#macbook
 ```
 
-The first activation installs Homebrew packages/casks and runs the best-effort AI bootstrap. Inspect `~/.local/state/ai-tools/bootstrap.log`, then rerun `ai-tools-update` if a vendor was temporarily unavailable.
+The first activation installs Homebrew packages/casks and runs the best-effort
+AI bootstrap. It can take a while because GUI applications are downloaded.
+Inspect `~/.local/state/ai-tools/bootstrap.log`, then rerun `ai-tools-update` if
+a vendor was temporarily unavailable.
 
 ## Secrets
 
 No secret value is evaluated by Nix or written to the Nix store. SecretSpec resolves values only when a command/service starts.
 
-1. Open and unlock 1Password; enable its CLI integration.
-2. In the `Private` vault, create a Secure Note named `nix-darwin-config`.
-3. Add a field named `OPENROUTER_API_KEY`. Optional fields are declared for OpenAI, Anthropic, and Gemini.
-4. Verify:
+1. Open and unlock 1Password, then enable **Settings → Developer → Integrate
+   with 1Password CLI**.
+2. In the default vault, create a Secure Note named `nix-darwin-config`.
+3. Add `OPENROUTER_API_KEY` and a random `CLAUDEX_PROXY_TOKEN` field. Optional
+   fields are declared for OpenAI, Anthropic, and Gemini.
+4. After creating the Secure Note, SecretSpec can add or update its declared
+   fields:
+
+```bash
+secretspec set OPENROUTER_API_KEY --file ~/.config/nix-darwin/secretspec.toml --profile personal
+secretspec set CLAUDEX_PROXY_TOKEN --file ~/.config/nix-darwin/secretspec.toml --profile personal
+```
+
+5. Verify:
 
 ```bash
 op whoami
 secretspec check --file ~/.config/nix-darwin/secretspec.toml --profile personal
 ```
 
-Change the vault in `config/secretspec.toml` and `SECRETSPEC_PROVIDER` in `modules/shell.nix` if your personal vault has another name. CLIProxyAPI's OAuth files remain mutable at `~/.config/cli-proxy-api/auth` and are intentionally unmanaged.
+Change the provider URI in `config/secretspec.toml` if you do not want
+1Password's default vault. The Claude proxy token is injected only at runtime;
+the generated mode-0600 config and CLIProxyAPI OAuth state remain mutable under
+`~/.local/state/cli-proxy-api` and `~/.config/cli-proxy-api/auth` respectively.
 
 ## Latest policy
 
@@ -69,7 +130,7 @@ Command-Space is released from Spotlight and assigned to Raycast. Ghostty is ass
 
 ```bash
 nix develop -c shellcheck scripts/* tests/*.sh
-nix fmt -- --check $(rg --files -g '*.nix')
+rg --files -0 -g '*.nix' | xargs -0 nix fmt -- --check
 nix flake check --print-build-logs
 ./tests/vm-test.sh
 ```
@@ -84,3 +145,7 @@ The VM test uses a disposable Tart macOS guest, switches the configuration twice
 macOS guests cannot exercise nested virtualization engines, so the test verifies that OrbStack, Tart, and UTM install; their actual container/VM engines must be smoke-tested on physical hardware. Tailscale's package installs in the guest, but its final automatic GUI launch is unavailable without a GUI bootstrap domain; the activation accepts that post-install error only on Apple's `VirtualMac` platform and only after the app bundle exists.
 
 Rollback remains available through `darwin-rebuild --list-generations` and `darwin-rebuild switch --rollback`.
+
+## License
+
+Released under the MIT License. See [`LICENSE`](LICENSE).

@@ -1,13 +1,23 @@
 { inputs, config, ... }:
 let
   user = "joel.filho";
+  gitName = "Joel Francisco";
+  gitEmail = "69012524+JoelFrancisco@users.noreply.github.com";
   mkMacbook =
     {
       offlineTest ? false,
       extraModules ? [ ],
     }:
     inputs.nix-darwin.lib.darwinSystem {
-      specialArgs = { inherit inputs user offlineTest; };
+      specialArgs = {
+        inherit
+          inputs
+          user
+          gitName
+          gitEmail
+          offlineTest
+          ;
+      };
       modules = [
         inputs.nix-homebrew.darwinModules.nix-homebrew
         inputs.home-manager.darwinModules.home-manager
@@ -28,7 +38,15 @@ let
             useGlobalPkgs = true;
             useUserPackages = true;
             backupFileExtension = "before-nix-darwin";
-            extraSpecialArgs = { inherit inputs user offlineTest; };
+            extraSpecialArgs = {
+              inherit
+                inputs
+                user
+                gitName
+                gitEmail
+                offlineTest
+                ;
+            };
             users.${user}.imports = [
               config.flake.homeModules.shell
               config.flake.homeModules.editor

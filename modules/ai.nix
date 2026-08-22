@@ -13,6 +13,8 @@
         inherit source;
         executable = true;
       };
+      withHome =
+        source: builtins.replaceStrings [ "@HOME@" ] [ "/Users/${user}" ] (builtins.readFile source);
     in
     {
       home.file = {
@@ -26,7 +28,7 @@
         ".local/bin/ai-memory-backup" = executable ../scripts/ai-memory-backup;
         ".agents/AGENTS.md".source = ../config/AGENTS.md;
         ".codex/AGENTS.md".source = ../config/AGENTS.md;
-        ".codex/config.toml".source = ../config/codex.toml;
+        ".codex/config.toml".text = withHome ../config/codex.toml;
         ".claude/CLAUDE.md".source = ../config/CLAUDE.md;
         ".claude/settings.json".text = builtins.toJSON {
           env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS = "1";
@@ -50,7 +52,7 @@
           };
         };
         ".hermes/config.yaml".source = ../config/hermes.yaml;
-        ".t3/userdata/settings.json".source = ../config/t3-settings.json;
+        ".t3/userdata/settings.json".text = withHome ../config/t3-settings.json;
         ".ai-jail".text = ''
           no_status_bar = true
           no_save_config = true
@@ -63,8 +65,8 @@
 
       xdg.configFile = {
         "nix-darwin/secretspec.toml".source = ../config/secretspec.toml;
-        "cli-proxy-api/config.yaml".source = ../config/cli-proxy-api.yaml;
-        "opencode/opencode.json".source = ../config/opencode.json;
+        "cli-proxy-api/config.template.json".source = ../config/cli-proxy-api.json;
+        "opencode/opencode.json".text = withHome ../config/opencode.json;
       };
 
       home.activation.prepareAiState = lib.hm.dag.entryAfter [ "writeBoundary" ] ''

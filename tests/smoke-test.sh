@@ -21,6 +21,7 @@ for path in \
   "$HOME/.config/nvim/lua/config/lazy.lua" \
   "$HOME/.config/opencode/opencode.json" \
   "$HOME/.config/nix-darwin/secretspec.toml" \
+  "$HOME/.config/cli-proxy-api/config.template.json" \
   "$HOME/.codex/config.toml" \
   "$HOME/.claude/CLAUDE.md" \
   "$HOME/.agents/AGENTS.md" \

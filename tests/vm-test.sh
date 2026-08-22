@@ -119,7 +119,7 @@ for shell_file in /etc/bashrc /etc/zshrc; do
 done
 
 if ! id joel.filho >/dev/null 2>&1; then
-  echo admin | sudo -S sysadminctl -addUser joel.filho -fullName 'Joel Francisco' -password vm-test-only -admin
+  echo admin | sudo -S sysadminctl -addUser joel.filho -fullName 'Nix Darwin Test User' -password vm-test-only -admin
 fi
 # Keep reruns deterministic even when an older disposable VM already contains
 # the test account with a password from an earlier harness revision.

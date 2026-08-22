@@ -1,11 +1,11 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "instructions": ["/Users/joel.filho/.claude/CLAUDE.md"],
+  "instructions": ["@HOME@/.claude/CLAUDE.md"],
   "skills": {
     "paths": [
-      "/Users/joel.filho/.claude/skills",
-      "/Users/joel.filho/.agents/skills",
-      "/Users/joel.filho/.config/opencode/skill"
+      "@HOME@/.claude/skills",
+      "@HOME@/.agents/skills",
+      "@HOME@/.config/opencode/skill"
     ]
   },
   "mcp": {
@@ -23,4 +23,3 @@
   "permission": "allow",
   "plugin": ["@plannotator/opencode@latest"]
 }
-
