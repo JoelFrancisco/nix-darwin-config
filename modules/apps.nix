@@ -130,7 +130,7 @@ in
           "1password-cli"
           "bruno"
           "claude"
-          "codex-app"
+          "chatgpt"
           "cursor"
           "discord"
           "font-jetbrains-mono-nerd-font"

@@ -15,6 +15,7 @@
       };
       withHome =
         source: builtins.replaceStrings [ "@HOME@" ] [ "/Users/${user}" ] (builtins.readFile source);
+      codexConfig = pkgs.writeText "codex-config.toml" (withHome ../config/codex.toml);
     in
     {
       home.file = {
@@ -28,7 +29,6 @@
         ".local/bin/ai-memory-backup" = executable ../scripts/ai-memory-backup;
         ".agents/AGENTS.md".source = ../config/AGENTS.md;
         ".codex/AGENTS.md".source = ../config/AGENTS.md;
-        ".codex/config.toml".text = withHome ../config/codex.toml;
         ".claude/CLAUDE.md".source = ../config/CLAUDE.md;
         ".claude/settings.json".text = builtins.toJSON {
           env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS = "1";
@@ -69,13 +69,15 @@
         "opencode/opencode.json".text = withHome ../config/opencode.json;
       };
 
-      home.activation.prepareAiState = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+      home.activation.prepareAiState = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
         run mkdir -p \
+          "$HOME/.codex" \
           "$HOME/.executor/logs" \
           "$HOME/.config/ai-memory" \
           "$HOME/.config/cli-proxy-api/auth" \
           "$HOME/.local/state/ai-tools" \
           "$HOME/.local/state/cli-proxy-api"
+        run install -m 600 ${codexConfig} "$HOME/.codex/config.toml"
       '';
 
       home.activation.bootstrapAiTools =

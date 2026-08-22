@@ -3,6 +3,9 @@ model_reasoning_effort = "high"
 service_tier = "default"
 approvals_reviewer = "user"
 
+[projects."@HOME@"]
+trust_level = "trusted"
+
 [projects."@HOME@/Work"]
 trust_level = "trusted"
 

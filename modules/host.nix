@@ -1,6 +1,6 @@
 { inputs, config, ... }:
 let
-  user = "joel.filho";
+  user = "joel";
   gitName = "Joel Francisco";
   gitEmail = "69012524+JoelFrancisco@users.noreply.github.com";
   mkMacbook =

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-export PATH="/opt/homebrew/bin:/usr/bin:/bin:$PATH"
+export PATH="/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:$PATH"
 api="https://api.github.com/repos/pingdotgg/t3code/releases?per_page=20"
 release="$(curl -fsSL "$api" | jq -r '[.[] | select(.prerelease == true and (.tag_name | test("-nightly\\."))) | .assets[] | select(.name | test("^T3-Code-.*-arm64\\.zip$"))][0] | select(.browser_download_url and (.digest | startswith("sha256:"))) | [.browser_download_url, .digest] | @tsv')"
 [[ -n "$release" ]] || { echo "t3-nightly-update: no checksummed arm64 nightly asset found" >&2; exit 1; }

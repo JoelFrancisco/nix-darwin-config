@@ -30,7 +30,7 @@ for path in \
 done
 
 for app in \
-  "1Password.app" "Bruno.app" "Claude.app" "Codex.app" "Cursor.app" \
+  "1Password.app" "Bruno.app" "ChatGPT.app" "Cursor.app" \
   "Discord.app" "Ghostty.app" "Google Chrome.app" "Helium.app" "LocalSend.app" \
   "Obsidian.app" "OrbStack.app" "ProtonVPN.app" "Raycast.app" "Spotify.app" \
   "Tailscale.app" "Telegram.app" "Todoist.app" "UTM.app" "WhatsApp.app" \
