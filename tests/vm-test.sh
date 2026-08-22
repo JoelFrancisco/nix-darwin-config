@@ -107,6 +107,9 @@ done
 if ! id joel.filho >/dev/null 2>&1; then
   echo admin | sudo -S sysadminctl -addUser joel.filho -fullName 'Joel Francisco' -password vm-test-only -admin
 fi
+# Keep reruns deterministic even when an older disposable VM already contains
+# the test account with a password from an earlier harness revision.
+echo admin | sudo -S sysadminctl -resetPasswordFor joel.filho -newPassword vm-test-only
 echo admin | sudo -S mkdir -p /Users/joel.filho/Work
 echo admin | sudo -S rm -rf /Users/joel.filho/Work/nix-darwin-config
 echo admin | sudo -S cp -R /tmp/nix-darwin-config /Users/joel.filho/Work/nix-darwin-config
