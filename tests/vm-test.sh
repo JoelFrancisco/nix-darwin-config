@@ -20,6 +20,7 @@ ssh_options=(
 if ! tart list --source local | awk 'NR > 1 { print $2 }' | grep -qx "$vm_name"; then
   tart clone "$image" "$vm_name"
 fi
+tart set "$vm_name" --disk-size "${VM_DISK_SIZE:-120}"
 
 tart run "$vm_name" --no-graphics >"$repo_root/.vm-console.log" 2>&1 &
 tart_pid=$!
