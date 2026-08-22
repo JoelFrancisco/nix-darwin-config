@@ -28,6 +28,7 @@ in
           extraSpecialArgs = { inherit inputs user; };
           users.${user}.imports = [
             config.flake.homeModules.shell
+            config.flake.homeModules.editor
             config.flake.homeModules.terminal
             config.flake.homeModules.ai
             config.flake.homeModules.desktop

@@ -60,7 +60,6 @@
       gnupg
       gnused
       jq
-      neovim
       ripgrep
       rsync
       shellcheck

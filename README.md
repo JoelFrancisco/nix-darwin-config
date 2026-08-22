@@ -6,6 +6,7 @@ Private, dendritic macOS configuration for an Apple Silicon MacBook. The flake c
 - Nix for stable CLI/system packages
 - nix-homebrew + nix-darwin's Homebrew module for proprietary and fast-moving apps
 - SecretSpec with the 1Password provider for runtime secrets
+- Neovim managed by Home Manager with Joel's current LazyVim starter configuration
 - per-project `devenv` environments instead of global language stacks
 
 `macbook` is the only host today. Every file under `modules/` is a flake-parts module and contributes a feature-owned Darwin or Home Manager module.

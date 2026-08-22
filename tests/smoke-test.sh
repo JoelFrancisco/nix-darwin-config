@@ -15,6 +15,8 @@ for path in \
   "$HOME/.config/ghostty/config" \
   "$HOME/.config/tmux/tmux.conf" \
   "$HOME/.config/herdr/config.toml" \
+  "$HOME/.config/nvim/init.lua" \
+  "$HOME/.config/nvim/lua/config/lazy.lua" \
   "$HOME/.config/opencode/opencode.json" \
   "$HOME/.config/nix-darwin/secretspec.toml" \
   "$HOME/.codex/config.toml" \
