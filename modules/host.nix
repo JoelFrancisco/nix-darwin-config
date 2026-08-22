@@ -19,6 +19,11 @@ in
           enableRosetta = true;
           autoMigrate = true;
           mutableTaps = true;
+          trust.taps = [
+            "anomalyco/tap"
+            "akitaonrails/tap"
+            "cirruslabs/cli"
+          ];
         };
 
         home-manager = {
