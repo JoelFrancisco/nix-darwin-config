@@ -4,18 +4,26 @@ set -euo pipefail
 vm_name="${VM_NAME:-nix-darwin-config-test}"
 image="${TART_IMAGE:-ghcr.io/cirruslabs/macos-tahoe-base:latest}"
 repo_root="$(cd "$(dirname "$0")/.." && pwd)"
-key_dir="$(mktemp -d)"
+key_dir="$(mktemp -d /tmp/nix-darwin-vm.XXXXXX)"
 ssh-keygen -q -t ed25519 -N '' -f "$key_dir/id_ed25519"
 ssh_options=(
   -i "$key_dir/id_ed25519"
   -o IdentitiesOnly=yes
   -o ControlMaster=auto
-  -o ControlPath="$key_dir/control"
+  -o ControlPath="$key_dir/control-%r@%h:%p"
   -o ControlPersist=600
   -o StrictHostKeyChecking=no
   -o UserKnownHostsFile=/dev/null
   -o ConnectTimeout=15
 )
+
+run_tty_script() {
+  local target="$1"
+  local payload
+  payload="$(base64 | tr -d '\n')"
+  ssh -tt "${ssh_options[@]}" "$target" \
+    "/bin/echo '$payload' | /usr/bin/base64 -D | /bin/bash"
+}
 
 if ! tart list --source local | awk 'NR > 1 { print $2 }' | grep -qx "$vm_name"; then
   tart clone "$image" "$vm_name"
@@ -109,7 +117,9 @@ if ! id joel.filho >/dev/null 2>&1; then
 fi
 # Keep reruns deterministic even when an older disposable VM already contains
 # the test account with a password from an earlier harness revision.
-echo admin | sudo -S sysadminctl -resetPasswordFor joel.filho -newPassword vm-test-only
+echo admin | sudo -S sysadminctl \
+  -adminUser admin -adminPassword admin \
+  -resetPasswordFor joel.filho -newPassword vm-test-only
 echo admin | sudo -S mkdir -p /Users/joel.filho/Work
 echo admin | sudo -S rm -rf /Users/joel.filho/Work/nix-darwin-config
 echo admin | sudo -S cp -R /tmp/nix-darwin-config /Users/joel.filho/Work/nix-darwin-config
@@ -123,7 +133,7 @@ REMOTE
 # Run activation as the declared primary user. Some signed Homebrew casks use
 # Apple's privileged package installer; keeping this user's sudo ticket fresh
 # mirrors an interactive first installation without granting passwordless root.
-ssh -tt "${ssh_options[@]}" joel.filho@"$ip" 'bash -s' <<'REMOTE'
+run_tty_script joel.filho@"$ip" <<'REMOTE'
 set -euo pipefail
 . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
 printf '%s\n' vm-test-only | sudo -S -v
@@ -143,7 +153,7 @@ for _ in $(seq 1 120); do
   sleep 5
 done
 
-ssh -tt "${ssh_options[@]}" joel.filho@"$ip" 'bash -s' <<'REMOTE'
+run_tty_script joel.filho@"$ip" <<'REMOTE'
 set -euo pipefail
 . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
 printf '%s\n' vm-test-only | sudo -S -v
