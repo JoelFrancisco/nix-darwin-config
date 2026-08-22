@@ -31,7 +31,7 @@ Subsequent rebuilds:
 darwin-rebuild switch --flake ~/Work/nix-darwin-config#macbook
 ```
 
-The first activation installs Homebrew packages/casks and runs the non-blocking AI bootstrap. Inspect `~/.local/state/ai-tools/bootstrap.log`, then rerun `ai-tools-update` if a vendor was temporarily unavailable.
+The first activation installs Homebrew packages/casks and runs the best-effort AI bootstrap. Inspect `~/.local/state/ai-tools/bootstrap.log`, then rerun `ai-tools-update` if a vendor was temporarily unavailable.
 
 ## Secrets
 
@@ -73,6 +73,8 @@ nix flake check --print-build-logs
 ./tests/vm-test.sh
 ```
 
-The VM test uses a disposable Tart macOS guest, switches the configuration twice, reboots, and runs `tests/smoke-test.sh`. A headless SSH-only user has no GUI launchd domain, so that test validates generated LaunchAgent plists; when a GUI domain exists it also verifies the agents are loaded. macOS guests cannot exercise nested virtualization engines, so the test verifies that OrbStack, Tart, and UTM install; their actual container/VM engines must be smoke-tested on physical hardware.
+The VM test uses a disposable Tart macOS guest, switches the configuration twice, reboots, and runs `tests/smoke-test.sh`. Background agents use the user launchd domain, so the headless test verifies both their generated plists and loaded services. The completed acceptance run is recorded in [`docs/vm-test-report.md`](docs/vm-test-report.md).
+
+macOS guests cannot exercise nested virtualization engines, so the test verifies that OrbStack, Tart, and UTM install; their actual container/VM engines must be smoke-tested on physical hardware. Tailscale's package installs in the guest, but its final automatic GUI launch is unavailable without a GUI bootstrap domain; the activation accepts that post-install error only on Apple's `VirtualMac` platform and only after the app bundle exists.
 
 Rollback remains available through `darwin-rebuild --list-generations` and `darwin-rebuild switch --rollback`.
