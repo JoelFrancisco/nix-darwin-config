@@ -24,6 +24,7 @@ in
             "akitaonrails/tap"
             "cirruslabs/cli"
           ];
+          trust.formulae = [ "cirruslabs/cli/softnet" ];
         };
 
         home-manager = {
