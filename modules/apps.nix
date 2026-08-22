@@ -99,6 +99,10 @@ in
           upgrade = true;
           # Preserve unrelated packages already owned by this Mac.
           cleanup = "none";
+          # The disposable VM has no signed-in Apple Account.
+          extraEnv = lib.optionalAttrs offlineTest {
+            HOMEBREW_BUNDLE_MAS_SKIP = "1";
+          };
         };
 
         taps = [
@@ -125,9 +129,15 @@ in
           "secretspec"
         ];
 
+        masApps = {
+          "Amazon Kindle" = 302584613;
+          "DaVinci Resolve" = 571213070;
+        };
+
         casks = map latestCask [
           "1password"
           "1password-cli"
+          "affinity"
           "bruno"
           "claude"
           "chatgpt"
