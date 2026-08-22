@@ -45,7 +45,7 @@ key_installed=false
 for _ in $(seq 1 20); do
   if VM_IP="$ip" VM_KEY_B64="$key_b64" expect <<'EXPECT'
 set timeout 30
-set remote "umask 077; mkdir -p ~/.ssh; echo '$env(VM_KEY_B64)' | base64 -D >> ~/.ssh/authorized_keys"
+set remote "umask 077; mkdir -p ~/.ssh; echo '$env(VM_KEY_B64)' | /usr/bin/base64 -D >> ~/.ssh/authorized_keys"
 spawn ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null admin@$env(VM_IP) $remote
 expect {
   "*assword:" { send "admin\r"; exp_continue }
