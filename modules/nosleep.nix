@@ -21,6 +21,7 @@
 
     launchd.agents.nosleep-auto-off = {
       enable = true;
+      domain = "user";
       config = {
         Label = "com.joel.nosleep-auto-off";
         ProgramArguments = [ "/Users/${user}/.local/bin/nosleep-auto-off" ];

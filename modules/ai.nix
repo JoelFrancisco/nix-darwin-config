@@ -75,16 +75,23 @@
           "$HOME/.local/state/cli-proxy-api"
       '';
 
-      home.activation.bootstrapAiTools = lib.hm.dag.entryAfter [ "prepareAiState" ] ''
-        if [[ -z "''${DRY_RUN:-}" ]]; then
-          "$HOME/.local/bin/ai-tools-update" >"$HOME/.local/state/ai-tools/bootstrap.log" 2>&1 || true
-          "$HOME/.local/bin/ai-mcp-configure" >>"$HOME/.local/state/ai-tools/bootstrap.log" 2>&1 || true
-        fi
-      '';
+      home.activation.bootstrapAiTools =
+        lib.hm.dag.entryAfter
+          [
+            "prepareAiState"
+            "linkGeneration"
+          ]
+          ''
+            if [[ -z "''${DRY_RUN:-}" ]]; then
+              "$HOME/.local/bin/ai-tools-update" >"$HOME/.local/state/ai-tools/bootstrap.log" 2>&1 || true
+              "$HOME/.local/bin/ai-mcp-configure" >>"$HOME/.local/state/ai-tools/bootstrap.log" 2>&1 || true
+            fi
+          '';
 
       launchd.agents = {
         executor = {
           enable = true;
+          domain = "user";
           config = {
             Label = "sh.executor.daemon";
             ProgramArguments = [
@@ -116,6 +123,7 @@
 
         ai-memory-watchdog = {
           enable = true;
+          domain = "user";
           config = {
             Label = "com.joel.ai-memory-watchdog";
             ProgramArguments = [ "/Users/${user}/.local/bin/ai-memory-ensure" ];
@@ -132,6 +140,7 @@
 
         ai-memory-backup = {
           enable = true;
+          domain = "user";
           config = {
             Label = "com.joel.ai-memory-backup";
             ProgramArguments = [ "/Users/${user}/.local/bin/ai-memory-backup" ];
@@ -146,6 +155,7 @@
 
         ai-tools-latest = {
           enable = true;
+          domain = "user";
           config = {
             Label = "com.joel.ai-tools-latest";
             ProgramArguments = [ "/Users/${user}/.local/bin/ai-tools-update" ];
