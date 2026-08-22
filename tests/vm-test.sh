@@ -4,7 +4,15 @@ set -euo pipefail
 vm_name="${VM_NAME:-nix-darwin-config-test}"
 image="${TART_IMAGE:-ghcr.io/cirruslabs/macos-tahoe-base:latest}"
 repo_root="$(cd "$(dirname "$0")/.." && pwd)"
-ssh_options=(-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=5)
+key_dir="$(mktemp -d)"
+ssh-keygen -q -t ed25519 -N '' -f "$key_dir/id_ed25519"
+ssh_options=(
+  -i "$key_dir/id_ed25519"
+  -o IdentitiesOnly=yes
+  -o StrictHostKeyChecking=no
+  -o UserKnownHostsFile=/dev/null
+  -o ConnectTimeout=5
+)
 
 if ! tart list --source local | awk 'NR > 1 { print $2 }' | grep -qx "$vm_name"; then
   tart clone "$image" "$vm_name"
@@ -12,15 +20,36 @@ fi
 
 tart run "$vm_name" --no-graphics >"$repo_root/.vm-console.log" 2>&1 &
 tart_pid=$!
-trap 'kill "$tart_pid" 2>/dev/null || true' EXIT
+cleanup() {
+  kill "$tart_pid" 2>/dev/null || true
+  rm -rf "$key_dir"
+}
+trap cleanup EXIT
 
 ip=""
 for _ in $(seq 1 120); do
   ip="$(tart ip "$vm_name" 2>/dev/null || true)"
-  [[ -n "$ip" ]] && ssh "${ssh_options[@]}" admin@"$ip" true >/dev/null 2>&1 && break
+  [[ -n "$ip" ]] && nc -z "$ip" 22 >/dev/null 2>&1 && break
   sleep 5
 done
 [[ -n "$ip" ]] || { echo "VM did not become reachable" >&2; exit 1; }
+
+# Cirrus base images use admin/admin. Install a throwaway key once, then keep
+# every provisioning command non-interactive. The private key is deleted by
+# the EXIT trap and never enters the guest or repository.
+key_b64="$(base64 <"$key_dir/id_ed25519.pub" | tr -d '\n')"
+VM_IP="$ip" VM_KEY_B64="$key_b64" expect <<'EXPECT'
+set timeout 30
+set remote "umask 077; mkdir -p ~/.ssh; echo '$env(VM_KEY_B64)' | base64 -D >> ~/.ssh/authorized_keys"
+spawn ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null admin@$env(VM_IP) $remote
+expect {
+  "*assword:" { send "admin\r"; exp_continue }
+  eof
+}
+catch wait result
+exit [lindex $result 3]
+EXPECT
+ssh "${ssh_options[@]}" admin@"$ip" true
 
 tar --exclude=.git --exclude=result --exclude='.vm-console.log' -C "$repo_root" -cf - . | \
   ssh "${ssh_options[@]}" admin@"$ip" 'rm -rf /tmp/nix-darwin-config && mkdir /tmp/nix-darwin-config && tar -C /tmp/nix-darwin-config -xf -'
