@@ -124,6 +124,12 @@ No Betha repository, skill, project trust entry, VPN credential, agent history, 
 
 macOS requires first-launch approval for 1Password integration, Raycast Accessibility, Tailscale and Proton VPN network extensions, notifications, microphone/camera access, and some app login items. Nix can install these apps but cannot safely bypass TCC or system-extension consent.
 
+DaVinci Resolve is intentionally installed from Blackmagic Design rather than
+the Mac App Store. Its official download requires vendor registration and an
+interactive administrator installer, so it is not managed by Nix or Homebrew.
+Download the free macOS installer from the
+[official Resolve page](https://www.blackmagicdesign.com/products/davinciresolve).
+
 Command-Space is released from Spotlight and assigned to Raycast. Ghostty is associated with shell scripts and Unix executables; macOS has no single public system-wide “default terminal” setting.
 
 ## Checks and VM test

@@ -132,7 +132,6 @@ in
 
         masApps = {
           "Amazon Kindle" = 302584613;
-          "DaVinci Resolve" = 571213070;
         };
 
         casks = map latestCask [
