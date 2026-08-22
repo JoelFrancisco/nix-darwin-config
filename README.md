@@ -18,6 +18,8 @@ The target account is `joel.filho` on `aarch64-darwin`.
 xcode-select --install
 curl -L https://nixos.org/nix/install | sh -s -- --daemon
 . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
+sudo mv /etc/bashrc /etc/bashrc.before-nix-darwin
+sudo mv /etc/zshrc /etc/zshrc.before-nix-darwin
 git clone git@github.com:JoelFrancisco/nix-darwin-config.git ~/Work/nix-darwin-config
 cd ~/Work/nix-darwin-config
 sudo nix run nix-darwin/master#darwin-rebuild -- switch --flake .#macbook

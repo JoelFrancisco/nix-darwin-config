@@ -62,6 +62,14 @@ if [[ ! -x /nix/var/nix/profiles/default/bin/nix ]]; then
 fi
 . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
 
+# The official Nix installer owns these files first. nix-darwin deliberately
+# requires an explicit backup before it takes them over on the initial switch.
+for shell_file in /etc/bashrc /etc/zshrc; do
+  if [[ -e "$shell_file" && ! -e "$shell_file.before-nix-darwin" ]]; then
+    echo admin | sudo -S mv "$shell_file" "$shell_file.before-nix-darwin"
+  fi
+done
+
 if ! id joel.filho >/dev/null 2>&1; then
   echo admin | sudo -S sysadminctl -addUser joel.filho -fullName 'Joel Francisco' -password vm-test-only -admin
 fi
