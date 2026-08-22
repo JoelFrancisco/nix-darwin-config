@@ -4,6 +4,7 @@ set -euo pipefail
 vm_name="${VM_NAME:-nix-darwin-config-test}"
 image="${TART_IMAGE:-ghcr.io/cirruslabs/macos-tahoe-base:latest}"
 repo_root="$(cd "$(dirname "$0")/.." && pwd)"
+system_path="$(nix build --no-link --print-out-paths "$repo_root#darwinConfigurations.macbook.system")"
 key_dir="$(mktemp -d /tmp/nix-darwin-vm.XXXXXX)"
 ssh-keygen -q -t ed25519 -N '' -f "$key_dir/id_ed25519"
 ssh_options=(
@@ -130,6 +131,16 @@ echo admin | sudo -S chmod 600 /Users/joel.filho/.ssh/authorized_keys
 echo admin | sudo -S chown -R joel.filho:staff /Users/joel.filho
 REMOTE
 
+# The evaluated system output is local and therefore absent from the public
+# binary cache. Copy its closure directly to the same-architecture guest so a
+# cache outage or a slow negative lookup cannot make activation nondeterministic.
+NIX_SSHOPTS="${ssh_options[*]}" \
+  nix copy --no-check-sigs --to "ssh-ng://joel.filho@$ip" "$system_path"
+# Intentional client-side expansion passes the exact prebuilt store path.
+# shellcheck disable=SC2029
+ssh "${ssh_options[@]}" admin@"$ip" \
+  "/usr/bin/printf '%s\\n' '$system_path' > /tmp/nix-darwin-system-path"
+
 # Run activation as the declared primary user. Some signed Homebrew casks use
 # Apple's privileged package installer; keeping this user's sudo ticket fresh
 # mirrors an interactive first installation without granting passwordless root.
@@ -140,7 +151,10 @@ printf '%s\n' vm-test-only | sudo -S -v
 while sudo -n -v; do sleep 30; done &
 sudo_keeper=$!
 trap 'kill "$sudo_keeper" 2>/dev/null || true' EXIT
-sudo nix --extra-experimental-features 'nix-command flakes' run nix-darwin/master#darwin-rebuild -- switch --flake /Users/joel.filho/Work/nix-darwin-config#macbook
+target_system="$(/bin/cat /tmp/nix-darwin-system-path)"
+sudo /nix/var/nix/profiles/default/bin/nix-env \
+  -p /nix/var/nix/profiles/system --set "$target_system"
+sudo "$target_system/activate"
 sudo shutdown -r now
 REMOTE
 
@@ -168,7 +182,7 @@ if ! nix --extra-experimental-features nix-command store ping --store daemon >/d
   done
   nix --extra-experimental-features nix-command store ping --store daemon >/dev/null
 fi
-sudo /run/current-system/sw/bin/darwin-rebuild switch --flake /Users/joel.filho/Work/nix-darwin-config#macbook
+sudo /run/current-system/sw/bin/darwin-rebuild activate
 /Users/joel.filho/.local/bin/ai-tools-update
 /Users/joel.filho/Work/nix-darwin-config/tests/smoke-test.sh
 REMOTE
