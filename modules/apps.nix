@@ -34,9 +34,18 @@ in
       };
 
       taps = [
-        "anomalyco/tap"
-        "akitaonrails/tap"
-        "cirruslabs/cli"
+        {
+          name = "anomalyco/tap";
+          trusted = true;
+        }
+        {
+          name = "akitaonrails/tap";
+          trusted = true;
+        }
+        {
+          name = "cirruslabs/cli";
+          trusted = true;
+        }
       ];
 
       brews = [
