@@ -74,6 +74,11 @@ nix flake check --print-build-logs
 ./tests/vm-test.sh
 ```
 
+After one successful online provisioning run, `VM_SKIP_NETWORK_UPDATES=1 ./tests/vm-test.sh`
+runs the same modules with Homebrew auto-update disabled, two activations,
+reboot, and the smoke suite without refresh-only Homebrew and AI network calls.
+This is useful during an upstream CDN outage; the default remains online.
+
 The VM test uses a disposable Tart macOS guest, switches the configuration twice, reboots, and runs `tests/smoke-test.sh`. Background agents use the user launchd domain, so the headless test verifies both their generated plists and loaded services. The completed acceptance run is recorded in [`docs/vm-test-report.md`](docs/vm-test-report.md).
 
 macOS guests cannot exercise nested virtualization engines, so the test verifies that OrbStack, Tart, and UTM install; their actual container/VM engines must be smoke-tested on physical hardware. Tailscale's package installs in the guest, but its final automatic GUI launch is unavailable without a GUI bootstrap domain; the activation accepts that post-install error only on Apple's `VirtualMac` platform and only after the app bundle exists.

@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+export PATH="/opt/homebrew/bin:/opt/homebrew/sbin:$PATH"
+
 failures=0
 check() {
   if "$@"; then printf 'ok  %s\n' "$*"; else printf 'FAIL %s\n' "$*" >&2; failures=$((failures + 1)); fi
@@ -29,13 +31,15 @@ done
 for app in \
   "1Password.app" "Bruno.app" "Claude.app" "Codex.app" "Cursor.app" \
   "Discord.app" "Ghostty.app" "Google Chrome.app" "Helium.app" "LocalSend.app" \
-  "Obsidian.app" "OrbStack.app" "Proton VPN.app" "Raycast.app" "Spotify.app" \
+  "Obsidian.app" "OrbStack.app" "ProtonVPN.app" "Raycast.app" "Spotify.app" \
   "Tailscale.app" "Telegram.app" "Todoist.app" "UTM.app" "WhatsApp.app" \
   "Wispr Flow.app" "zoom.us.app"; do
   check test -d "/Applications/$app"
 done
 
-check test -d "$HOME/Applications/T3 Code (Nightly).app"
+if [[ "${SMOKE_SKIP_NETWORK_BOOTSTRAP:-0}" != 1 ]]; then
+  check test -d "$HOME/Applications/T3 Code (Nightly).app"
+fi
 check defaults read com.raycast.macos raycastGlobalHotkey
 check test -f "$HOME/Library/LaunchAgents/sh.executor.daemon.plist"
 check test -f "$HOME/Library/LaunchAgents/com.joel.ai-memory-watchdog.plist"

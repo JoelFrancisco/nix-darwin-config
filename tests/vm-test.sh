@@ -3,8 +3,13 @@ set -euo pipefail
 
 vm_name="${VM_NAME:-nix-darwin-config-test}"
 image="${TART_IMAGE:-ghcr.io/cirruslabs/macos-tahoe-base:latest}"
+skip_network_updates="${VM_SKIP_NETWORK_UPDATES:-0}"
 repo_root="$(cd "$(dirname "$0")/.." && pwd)"
-system_path="$(nix build --no-link --print-out-paths "$repo_root#darwinConfigurations.macbook.system")"
+configuration="macbook"
+if [[ "$skip_network_updates" = 1 ]]; then
+  configuration="macbook-offline-test"
+fi
+system_path="$(nix build --no-link --print-out-paths "$repo_root#darwinConfigurations.$configuration.system")"
 key_dir="$(mktemp -d /tmp/nix-darwin-vm.XXXXXX)"
 ssh-keygen -q -t ed25519 -N '' -f "$key_dir/id_ed25519"
 ssh_options=(
@@ -140,11 +145,16 @@ NIX_SSHOPTS="${ssh_options[*]}" \
 # shellcheck disable=SC2029
 ssh "${ssh_options[@]}" admin@"$ip" \
   "/usr/bin/printf '%s\\n' '$system_path' > /tmp/nix-darwin-system-path"
+# shellcheck disable=SC2029
+ssh "${ssh_options[@]}" admin@"$ip" \
+  "/usr/bin/printf '%s\\n' '$skip_network_updates' > /tmp/nix-darwin-skip-network"
 
 # Run activation as the declared primary user. Some signed Homebrew casks use
 # Apple's privileged package installer; keeping this user's sudo ticket fresh
 # mirrors an interactive first installation without granting passwordless root.
-run_tty_script joel.filho@"$ip" <<'REMOTE'
+# A successful immediate reboot drops SSH before it can report a clean exit.
+# The marker is checked after boot so an earlier activation failure stays fatal.
+run_tty_script joel.filho@"$ip" <<'REMOTE' || true
 set -euo pipefail
 . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
 printf '%s\n' vm-test-only | sudo -S -v
@@ -152,9 +162,19 @@ while sudo -n -v; do sleep 30; done &
 sudo_keeper=$!
 trap 'kill "$sudo_keeper" 2>/dev/null || true' EXIT
 target_system="$(/bin/cat /tmp/nix-darwin-system-path)"
+skip_network_updates="$(/bin/cat /tmp/nix-darwin-skip-network)"
+/usr/bin/printf '%s\n' "$skip_network_updates" | sudo /usr/bin/tee /var/db/nix-darwin-skip-network >/dev/null
 sudo /nix/var/nix/profiles/default/bin/nix-env \
   -p /nix/var/nix/profiles/system --set "$target_system"
-sudo "$target_system/activate"
+if [[ "$skip_network_updates" = 1 ]]; then
+  sudo /usr/bin/env \
+    NIX_DARWIN_SKIP_NETWORK_UPDATES=1 \
+    HOMEBREW_NO_AUTO_UPDATE=1 \
+    "$target_system/activate"
+else
+  sudo "$target_system/activate"
+fi
+sudo /usr/bin/touch /var/db/nix-darwin-first-activation-complete
 sudo shutdown -r now
 REMOTE
 
@@ -170,6 +190,7 @@ done
 run_tty_script joel.filho@"$ip" <<'REMOTE'
 set -euo pipefail
 . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
+test -f /var/db/nix-darwin-first-activation-complete
 printf '%s\n' vm-test-only | sudo -S -v
 while sudo -n -v; do sleep 30; done &
 sudo_keeper=$!
@@ -182,9 +203,18 @@ if ! nix --extra-experimental-features nix-command store ping --store daemon >/d
   done
   nix --extra-experimental-features nix-command store ping --store daemon >/dev/null
 fi
-sudo /run/current-system/sw/bin/darwin-rebuild activate
-/Users/joel.filho/.local/bin/ai-tools-update
-/Users/joel.filho/Work/nix-darwin-config/tests/smoke-test.sh
+skip_network_updates="$(/bin/cat /var/db/nix-darwin-skip-network)"
+if [[ "$skip_network_updates" = 1 ]]; then
+  sudo /usr/bin/env \
+    NIX_DARWIN_SKIP_NETWORK_UPDATES=1 \
+    HOMEBREW_NO_AUTO_UPDATE=1 \
+    /run/current-system/sw/bin/darwin-rebuild activate
+else
+  sudo /run/current-system/sw/bin/darwin-rebuild activate
+  /Users/joel.filho/.local/bin/ai-tools-update
+fi
+SMOKE_SKIP_NETWORK_BOOTSTRAP="$skip_network_updates" \
+  /Users/joel.filho/Work/nix-darwin-config/tests/smoke-test.sh
 REMOTE
 
 echo "VM activation and smoke tests passed on $vm_name ($ip)"

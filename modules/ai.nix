@@ -5,6 +5,7 @@
       lib,
       pkgs,
       user,
+      offlineTest,
       ...
     }:
     let
@@ -81,12 +82,17 @@
             "prepareAiState"
             "linkGeneration"
           ]
-          ''
-            if [[ -z "''${DRY_RUN:-}" ]]; then
-              "$HOME/.local/bin/ai-tools-update" >"$HOME/.local/state/ai-tools/bootstrap.log" 2>&1 || true
-              "$HOME/.local/bin/ai-mcp-configure" >>"$HOME/.local/state/ai-tools/bootstrap.log" 2>&1 || true
-            fi
-          '';
+          (
+            if offlineTest then
+              "true"
+            else
+              ''
+                if [[ -z "''${DRY_RUN:-}" ]]; then
+                  "$HOME/.local/bin/ai-tools-update" >"$HOME/.local/state/ai-tools/bootstrap.log" 2>&1 || true
+                  "$HOME/.local/bin/ai-mcp-configure" >>"$HOME/.local/state/ai-tools/bootstrap.log" 2>&1 || true
+                fi
+              ''
+          );
 
       launchd.agents = {
         executor = {
