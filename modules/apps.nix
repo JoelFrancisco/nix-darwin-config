@@ -23,6 +23,18 @@ in
       fi
     '';
 
+    # Homebrew 6 invalidates trust while migrating an already-present tap,
+    # before `bundle` fetches that tap's dependencies. Scope the bypass to the
+    # declarative bundle run, then restore the exact trust set for manual use.
+    system.activationScripts.postActivation.text = ''
+      if [ -x /opt/homebrew/bin/brew ]; then
+        /usr/bin/sudo -u ${user} -H /opt/homebrew/bin/brew trust --tap anomalyco/tap
+        /usr/bin/sudo -u ${user} -H /opt/homebrew/bin/brew trust --tap akitaonrails/tap
+        /usr/bin/sudo -u ${user} -H /opt/homebrew/bin/brew trust --tap cirruslabs/cli
+        /usr/bin/sudo -u ${user} -H /opt/homebrew/bin/brew trust --formula cirruslabs/cli/softnet
+      fi
+    '';
+
     homebrew = {
       enable = true;
       global.autoUpdate = true;
@@ -31,6 +43,7 @@ in
         upgrade = true;
         # Preserve unrelated packages already owned by this Mac.
         cleanup = "none";
+        extraEnv.HOMEBREW_NO_REQUIRE_TAP_TRUST = "1";
       };
 
       taps = [
