@@ -110,10 +110,25 @@ fi
 echo admin | sudo -S mkdir -p /Users/joel.filho/Work
 echo admin | sudo -S rm -rf /Users/joel.filho/Work/nix-darwin-config
 echo admin | sudo -S cp -R /tmp/nix-darwin-config /Users/joel.filho/Work/nix-darwin-config
+echo admin | sudo -S mkdir -p /Users/joel.filho/.ssh
+echo admin | sudo -S cp /Users/admin/.ssh/authorized_keys /Users/joel.filho/.ssh/authorized_keys
+echo admin | sudo -S chmod 700 /Users/joel.filho/.ssh
+echo admin | sudo -S chmod 600 /Users/joel.filho/.ssh/authorized_keys
 echo admin | sudo -S chown -R joel.filho:staff /Users/joel.filho
+REMOTE
 
-echo admin | sudo -S nix --extra-experimental-features 'nix-command flakes' run nix-darwin/master#darwin-rebuild -- switch --flake /Users/joel.filho/Work/nix-darwin-config#macbook
-echo admin | sudo -S shutdown -r now
+# Run activation as the declared primary user. Some signed Homebrew casks use
+# Apple's privileged package installer; keeping this user's sudo ticket fresh
+# mirrors an interactive first installation without granting passwordless root.
+ssh -tt "${ssh_options[@]}" joel.filho@"$ip" 'bash -s' <<'REMOTE'
+set -euo pipefail
+. /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
+printf '%s\n' vm-test-only | sudo -S -v
+while sudo -n -v; do sleep 30; done &
+sudo_keeper=$!
+trap 'kill "$sudo_keeper" 2>/dev/null || true' EXIT
+sudo nix --extra-experimental-features 'nix-command flakes' run nix-darwin/master#darwin-rebuild -- switch --flake /Users/joel.filho/Work/nix-darwin-config#macbook
+sudo shutdown -r now
 REMOTE
 
 for _ in $(seq 1 60); do
@@ -125,20 +140,24 @@ for _ in $(seq 1 120); do
   sleep 5
 done
 
-ssh "${ssh_options[@]}" admin@"$ip" 'bash -s' <<'REMOTE'
+ssh -tt "${ssh_options[@]}" joel.filho@"$ip" 'bash -s' <<'REMOTE'
 set -euo pipefail
 . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
+printf '%s\n' vm-test-only | sudo -S -v
+while sudo -n -v; do sleep 30; done &
+sudo_keeper=$!
+trap 'kill "$sudo_keeper" 2>/dev/null || true' EXIT
 if ! nix --extra-experimental-features nix-command store ping --store daemon >/dev/null 2>&1; then
-  echo admin | sudo -S launchctl kickstart -k system/org.nixos.nix-daemon
+  sudo launchctl kickstart -k system/org.nixos.nix-daemon
   for _ in $(seq 1 30); do
     nix --extra-experimental-features nix-command store ping --store daemon >/dev/null 2>&1 && break
     sleep 1
   done
   nix --extra-experimental-features nix-command store ping --store daemon >/dev/null
 fi
-echo admin | sudo -S /run/current-system/sw/bin/darwin-rebuild switch --flake /Users/joel.filho/Work/nix-darwin-config#macbook
-echo admin | sudo -S -u joel.filho /Users/joel.filho/.local/bin/ai-tools-update
-echo admin | sudo -S -u joel.filho /Users/joel.filho/Work/nix-darwin-config/tests/smoke-test.sh
+sudo /run/current-system/sw/bin/darwin-rebuild switch --flake /Users/joel.filho/Work/nix-darwin-config#macbook
+/Users/joel.filho/.local/bin/ai-tools-update
+/Users/joel.filho/Work/nix-darwin-config/tests/smoke-test.sh
 REMOTE
 
 echo "VM activation and smoke tests passed on $vm_name ($ip)"
