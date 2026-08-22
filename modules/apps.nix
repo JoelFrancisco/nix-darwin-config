@@ -6,11 +6,11 @@ let
   };
 in
 {
-  flake.darwinModules.apps = { user, ... }: {
+  flake.darwinModules.apps = { lib, user, ... }: {
     # A migrated Homebrew prefix can retain its previous owner's mutable lock
     # directory. Hand only that state directory to the declared primary user
     # before nix-darwin invokes brew bundle.
-    system.activationScripts.preActivation.text = ''
+    system.activationScripts.homebrew.text = lib.mkOrder 750 ''
       if [ -d /opt/homebrew/var/homebrew ]; then
         /usr/sbin/chown -R ${user}:admin /opt/homebrew/var/homebrew
       fi
