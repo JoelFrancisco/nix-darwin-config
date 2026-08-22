@@ -15,12 +15,13 @@ in
     }:
     {
       # A migrated Homebrew prefix can retain its previous owner's mutable
-      # directories. Hand those to the declared primary user after nix-homebrew
-      # installs its managed code, but before nix-darwin invokes brew bundle.
+      # directories. Hand those directories to the declared primary user after
+      # nix-homebrew installs its managed code, but do not rewrite the contents
+      # of signed app bundles before nix-darwin invokes brew bundle.
       system.activationScripts.homebrew.text = lib.mkOrder 750 ''
         for brew_dir in Cellar Caskroom Frameworks bin etc include lib opt sbin share var; do
           if [ -e "/opt/homebrew/$brew_dir" ]; then
-            /usr/sbin/chown -R ${user}:admin "/opt/homebrew/$brew_dir"
+            /usr/sbin/chown ${user}:admin "/opt/homebrew/$brew_dir"
           fi
         done
         if [ -d /opt/homebrew/var/homebrew/locks ]; then
