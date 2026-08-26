@@ -2,9 +2,16 @@
 set -euo pipefail
 
 current_user="$(id -un)"
-export PATH="$HOME/.local/bin:$HOME/.opencode/bin:$HOME/.nix-profile/bin:/etc/profiles/per-user/$current_user/bin:/run/current-system/sw/bin:/opt/homebrew/bin:$HOME/.local/share/npm/bin:/usr/bin:/bin:$PATH"
+export PATH="$HOME/.local/bin:$HOME/.nix-profile/bin:/etc/profiles/per-user/$current_user/bin:/run/current-system/sw/bin:/opt/homebrew/bin:/usr/bin:/bin:$PATH"
 export CODEX_NON_INTERACTIVE=1
 mkdir -p "$HOME/.local" "$HOME/.local/state/ai-tools"
+
+channel="${AI_TOOLS_CHANNEL:-pinned}"
+mutable_tools=" ${AI_TOOLS_MUTABLE_TOOLS:-opencode2 hermes cliproxyapi} "
+
+is_mutable() {
+  [[ "$mutable_tools" == *" $1 "* ]]
+}
 
 lock_file="$HOME/.local/state/ai-tools/update.lock"
 if ! /usr/bin/shlock -f "$lock_file" -p "$$"; then
@@ -19,21 +26,6 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# Migrate CLI installs previously managed by this configuration. The separate
-# Claude and Codex desktop applications remain installed.
-for old_cask in claude-code@latest codex; do
-  if brew list --cask "$old_cask" >/dev/null 2>&1; then
-    brew uninstall --cask --force "$old_cask"
-  fi
-done
-if brew list --formula opencode >/dev/null 2>&1; then
-  brew uninstall --formula --force opencode
-fi
-
-# Remove packages superseded by native first-party installers.
-npm uninstall --global --prefix "$HOME/.local" opencode-ai @opencode-ai/cli @openai/codex || true
-
-# Fast-moving agent CLIs bypass Homebrew and use their first-party installers.
 installer_dir="$(mktemp -d)"
 
 run_official_installer() {
@@ -44,22 +36,38 @@ run_official_installer() {
   /bin/bash "$installer_dir/$name" "$@"
 }
 
-run_official_installer https://claude.ai/install.sh claude-install latest
-run_official_installer https://chatgpt.com/codex/install.sh codex-install
+if [[ "$channel" = latest ]]; then
+  # The opt-in mutable channel preserves the former first-party installer path.
+  run_official_installer https://claude.ai/install.sh claude-install latest
+  run_official_installer https://chatgpt.com/codex/install.sh codex-install
+  run_official_installer https://opencode.ai/install opencode-install --no-modify-path
+  ln -sfn "$HOME/.opencode/bin/opencode" "$HOME/.local/bin/opencode"
+  ln -sfn "$HOME/.opencode/bin/opencode" "$HOME/.local/bin/opencode1"
+  npm install --global --prefix "$HOME/.local" executor@latest
+fi
 
-# OpenCode 1 and the OpenCode 2 beta intentionally coexist. Their official
-# installers share ~/.opencode/bin and publish distinct executable names.
-run_official_installer https://opencode.ai/install opencode-install --no-modify-path
-run_official_installer https://opencode.ai/v2/install opencode2-install --no-modify-path
-
-ln -sfn "$HOME/.opencode/bin/opencode" "$HOME/.local/bin/opencode"
-ln -sfn "$HOME/.opencode/bin/opencode" "$HOME/.local/bin/opencode1"
-ln -sfn "$HOME/.opencode/bin/opencode2" "$HOME/.local/bin/opencode2"
+if is_mutable opencode2; then
+  run_official_installer https://opencode.ai/v2/install opencode2-install --no-modify-path
+  # OpenCode 2 defaults to 49374, which is reserved for the ai-memory MCP server.
+  "$HOME/.opencode/bin/opencode2" service set port 49375
+  ln -sfn "$HOME/.opencode/bin/opencode2" "$HOME/.local/bin/opencode2"
+fi
 
 # Slower package-manager refreshes run after the latency-sensitive agent CLIs.
-npm install --global --prefix "$HOME/.local" executor@latest
 brew update || true
-brew upgrade --formula ai-jail cliproxyapi herdr hermes-agent secretspec cirruslabs/cli/tart || true
-command -v hermes >/dev/null 2>&1 && hermes update --yes || true
+brew_formulas=(ai-jail herdr cirruslabs/cli/tart)
+is_mutable cliproxyapi && brew_formulas+=(cliproxyapi)
+is_mutable hermes && brew_formulas+=(hermes-agent)
+if [[ "$channel" = latest ]]; then
+  if brew list --formula secretspec >/dev/null 2>&1; then
+    brew_formulas+=(secretspec)
+  else
+    brew install --formula secretspec || true
+  fi
+fi
+brew upgrade --formula "${brew_formulas[@]}" || true
+if is_mutable hermes && command -v hermes >/dev/null 2>&1; then
+  hermes update --yes || true
+fi
 "$HOME/.local/bin/ai-skills-update" || true
 "$HOME/.local/bin/t3-nightly-update" || true

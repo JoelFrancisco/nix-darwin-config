@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "$0")/.." && pwd)"
+package_file="$repo_root/packages/executor.nix"
+metadata="$(curl -fsSL https://registry.npmjs.org/executor/latest)"
+latest="$(jq -r '.version' <<<"$metadata")"
+current="$(sed -n 's/.*version = "\([^"]*\)";.*/\1/p' "$package_file")"
+
+if [[ -z "$latest" || "$latest" = null ]]; then
+  echo "Could not determine the latest Executor version" >&2
+  exit 1
+fi
+if [[ "$latest" = "$current" ]]; then
+  echo "Executor is already current at $current"
+  exit 0
+fi
+
+platform_version="${latest}-darwin-arm64"
+platform_metadata="$(curl -fsSL "https://registry.npmjs.org/executor/$platform_version")"
+tarball="$(jq -r '.dist.tarball' <<<"$platform_metadata")"
+if [[ -z "$tarball" || "$tarball" = null ]]; then
+  echo "Executor $platform_version has no published tarball" >&2
+  exit 1
+fi
+hash="$(nix store prefetch-file --json "$tarball" | jq -r '.hash')"
+
+LATEST_EXECUTOR_VERSION="$latest" EXECUTOR_SOURCE_HASH="$hash" perl -0pi -e '
+  s/version = "[^"]+";/version = "$ENV{LATEST_EXECUTOR_VERSION}";/;
+  s/hash = "sha256-[^"]+";/hash = "$ENV{EXECUTOR_SOURCE_HASH}";/;
+' "$package_file"
+
+nix fmt "$package_file"
+echo "Updated Executor from $current to $latest"

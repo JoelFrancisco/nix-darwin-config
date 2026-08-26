@@ -1,0 +1,26 @@
+name: update AI tools
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "43 10 * * *"
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@v19
+      - run: ./scripts/update-executor-package
+      - run: nix flake check --print-build-logs
+      - uses: peter-evans/create-pull-request@v7
+        with:
+          branch: automation/update-ai-tools
+          delete-branch: true
+          commit-message: "chore: update pinned AI tools"
+          title: "chore: update pinned AI tools"
+          body: "Automated pinned AI package refresh. The full flake check passed."

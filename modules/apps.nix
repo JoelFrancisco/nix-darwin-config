@@ -127,17 +127,14 @@ in
           "duti"
           "herdr"
           "hermes-agent"
-          "secretspec"
         ];
-
-        masApps = {
-          "Amazon Kindle" = 302584613;
-        };
 
         casks = map latestCask [
           "1password"
           "1password-cli"
           "affinity"
+          "beeper"
+          "blip"
           "bruno"
           "claude"
           "chatgpt"
@@ -154,11 +151,14 @@ in
           "raycast"
           "spotify"
           "telegram"
+          "ticktick"
           "todoist-app"
           "utm"
+          "visual-studio-code@insiders"
           "whatsapp"
           "wispr-flow"
           "zed"
+          "zotero"
         ];
       };
     };

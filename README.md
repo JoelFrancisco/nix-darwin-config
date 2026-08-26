@@ -17,10 +17,11 @@ The flake combines:
 
 The configuration includes Ghostty, LazyVim, tmux, Herdr, common Unix tools,
 OrbStack, Tart, UTM, browsers, editors, communication apps, 1Password,
-SecretSpec, and a local AI toolchain. Claude Code, Codex CLI, both OpenCode
-channels, and T3 Code Nightly use their upstream release channels rather than
-waiting for Homebrew package updates. See `modules/apps.nix` and
-`scripts/ai-tools-update` for the complete lists.
+SecretSpec, and a local AI toolchain. Claude Code, Codex CLI, OpenCode stable,
+Executor, and SecretSpec are Nix packages pinned by the flake. OpenCode 2,
+Hermes, CLIProxyAPI, and T3 Code Nightly remain explicit mutable exceptions.
+See `modules/apps.nix`, `modules/ai.nix`, and `scripts/ai-tools-update` for the
+complete lists.
 
 ## Prerequisites
 
@@ -59,8 +60,9 @@ curl -L https://nixos.org/nix/install | sh -s -- --daemon
 
 # 3. Clone and validate the configuration.
 mkdir -p ~/Work
-git clone https://github.com/JoelFrancisco/nix-darwin-config.git ~/Work/nix-darwin-config
-cd ~/Work/nix-darwin-config
+mkdir -p ~/Work/repos/github.com/JoelFrancisco
+git clone https://github.com/JoelFrancisco/nix-darwin-config.git ~/Work/repos/github.com/JoelFrancisco/nix-darwin-config
+cd ~/Work/repos/github.com/JoelFrancisco/nix-darwin-config
 nix flake check --print-build-logs
 
 # 4. Preserve installer-owned shell files before nix-darwin takes ownership.
@@ -74,13 +76,14 @@ sudo nix run nix-darwin/master#darwin-rebuild -- switch --flake .#macbook
 Subsequent rebuilds:
 
 ```bash
-darwin-rebuild switch --flake ~/Work/nix-darwin-config#macbook
+darwin-rebuild switch --flake ~/Work/repos/github.com/JoelFrancisco/nix-darwin-config#macbook
 ```
 
-The first activation installs Homebrew packages/casks and runs the best-effort
-AI bootstrap. It can take a while because GUI applications are downloaded.
-Inspect `~/.local/state/ai-tools/bootstrap.log`, then rerun `ai-tools-update` if
-a vendor was temporarily unavailable.
+The first activation installs Homebrew packages/casks, removes recognized
+launchers from the former mutable AI installation, and runs the best-effort
+bootstrap for the remaining mutable tools. It can take a while because GUI
+applications are downloaded. Inspect `~/.local/state/ai-tools/bootstrap.log`,
+then rerun `ai-tools-update` if a mutable vendor was temporarily unavailable.
 
 ## Secrets
 
@@ -111,12 +114,28 @@ Change the provider URI in `config/secretspec.toml` if you do not want
 the generated mode-0600 config and CLIProxyAPI OAuth state remain mutable under
 `~/.local/state/cli-proxy-api` and `~/.config/cli-proxy-api/auth` respectively.
 
-## Latest policy
+## Update policy
 
-The two update models are deliberate:
+The update models are deliberate:
 
-- Nix packages are pinned in `flake.lock`. The scheduled workflow opens an update PR so failures can be reviewed and generations remain rollback-safe.
-- GUI apps update through Homebrew and their built-in updaters. Every four hours and on login, `ai-tools-update` uses the official native installers for Claude Code and Codex CLI, the official OpenCode 1 and OpenCode 2 installer endpoints, and the official ARM64 T3 Code nightly GitHub release. It also refreshes Executor, Hermes, and the allow-listed public skills.
+| Tool group | Owner | Default channel | Update mechanism | Rollback |
+| --- | --- | --- | --- | --- |
+| Claude Code, Codex, OpenCode stable, Executor, SecretSpec | Home Manager | `pinned` | Reviewed flake lock update | Nix generation |
+| Reproducible package overrides | Home Manager | `fast-pinned` | Version/hash update followed by flake checks | Nix generation |
+| OpenCode 2, Hermes, CLIProxyAPI | Upstream/Homebrew | `latest` exception | Login and four-hour updater | Vendor-specific |
+| GUI applications | Homebrew/vendor | Latest | Homebrew and built-in updaters | Vendor-specific |
+
+The AI module exposes `ai.channel` with `pinned`, `fast-pinned`, and `latest`.
+The default is `pinned`. `fast-pinned` accepts package overrides through
+`ai.fastPinnedPackages`; any tool without an override falls back to the pinned
+nixpkgs package. `ai.mutableTools` is the explicit allowlist for exceptions.
+The root flake exposes each stable AI package separately, so a package and its
+non-interactive version check can be built before updating a machine.
+
+Every four hours and on login, `ai-tools-update` now touches only the selected
+mutable exceptions, T3 Code Nightly, Homebrew tools that remain mutable, and
+the allow-listed public skills. Selecting `latest` explicitly restores the
+vendor installers for the stable AI clients.
 
 No Betha repository, skill, project trust entry, VPN credential, agent history, auth database, or runtime memory is copied into this repository.
 

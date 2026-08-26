@@ -20,7 +20,8 @@ case "$state" in
   "")
     # The child shell expands OPENROUTER_API_KEY after SecretSpec injects it.
     # shellcheck disable=SC2016
-    secretspec run --file "$HOME/.config/nix-darwin/secretspec.toml" --profile personal -- \
+    secretspec run --file "$HOME/.config/nix-darwin/secretspec.toml" --profile personal --scope ai-memory \
+      --reason "Start local ai-memory service" -- \
       bash -c 'docker --context orbstack run -d --name ai-memory \
         --restart unless-stopped \
         -p 127.0.0.1:49374:49374 \

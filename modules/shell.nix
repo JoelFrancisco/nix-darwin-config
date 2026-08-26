@@ -1,4 +1,20 @@
 { ... }:
+let
+  nixOwnedPath = ''
+    # Keep declarative tools ahead of inherited Homebrew/vendor paths and
+    # remove the mutable locations formerly managed by ai-tools-update.
+    path=(
+      "$HOME/.local/bin"
+      "$HOME/.nix-profile/bin"
+      "/etc/profiles/per-user/$USER/bin"
+      "''${(@)path:#$HOME/.opencode/bin}"
+    )
+    path=("''${(@)path:#$HOME/.local/share/npm/bin}")
+    path=("''${(@)path:#$HOME/.codex/packages/standalone/*/codex-path}")
+    typeset -U path
+    export PATH
+  '';
+in
 {
   flake.homeModules.shell =
     {
@@ -15,8 +31,6 @@
         stateVersion = "25.11";
         sessionPath = [
           "$HOME/.local/bin"
-          "$HOME/.opencode/bin"
-          "$HOME/.local/share/npm/bin"
         ];
         sessionVariables = {
           CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS = "1";
@@ -95,6 +109,7 @@
         enableCompletion = true;
         autosuggestion.enable = true;
         syntaxHighlighting.enable = true;
+        profileExtra = nixOwnedPath;
         shellAliases = {
           n = "nvim";
           gst = "git status";
@@ -110,6 +125,8 @@
         };
         initContent = ''
           source ~/.orbstack/shell/init.zsh 2>/dev/null || true
+
+          ${nixOwnedPath}
 
           _aijail_opts=(--ssh --rw-map ~/Work --mask .env --mask .env.local --mask credentials.json)
           jclaude()       { ai-jail "''${_aijail_opts[@]}" claude --dangerously-skip-permissions "$@"; }

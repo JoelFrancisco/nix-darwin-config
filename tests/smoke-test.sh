@@ -13,6 +13,22 @@ for command_name in git gh nvim tmux fd rg zoxide direnv starship secretspec her
   check command -v "$command_name"
 done
 
+for command_name in claude codex opencode executor secretspec; do
+  if ! command_path="$(command -v "$command_name")"; then
+    continue
+  fi
+  case "$command_path" in
+    "$HOME/.local/bin/"*|"$HOME/.opencode/bin/"*|"$HOME/.local/share/npm/bin/"*|/opt/homebrew/*)
+      echo "FAIL $command_name is shadowed by mutable path $command_path" >&2
+      failures=$((failures + 1))
+      ;;
+    *)
+      printf 'ok  %s resolves through Nix (%s)\n' "$command_name" "$command_path"
+      ;;
+  esac
+  check "$command_name" --version
+done
+
 for path in \
   "$HOME/.config/ghostty/config" \
   "$HOME/.config/tmux/tmux.conf" \
