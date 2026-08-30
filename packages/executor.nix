@@ -6,11 +6,11 @@
 
 stdenvNoCC.mkDerivation (finalAttrs: {
   pname = "executor";
-  version = "1.6.0";
+  version = "1.6.7";
 
   src = fetchurl {
     url = "https://registry.npmjs.org/executor/-/executor-${finalAttrs.version}-darwin-arm64.tgz";
-    hash = "sha256-Ti6ELUK4RAt5Y5CrQN1rFKYF/+Y5mgWJliiurTFuoc8=";
+    hash = "sha256-pek71JyMKm8pmAiKLuief1sFwni/1xpHvqkARxD/vKs=";
   };
 
   sourceRoot = "package";
